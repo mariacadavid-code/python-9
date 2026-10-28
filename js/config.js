@@ -7,7 +7,7 @@ window.APP_CONFIG = {
   DOMAIN: "serschool.edu.co",
   // URL del Web App de Apps Script (termina en /exec).
   // Vacío = MODO DEMO: el progreso se guarda solo en este navegador.
-  API_URL: "",
+  API_URL: "https://script.google.com/macros/s/AKfycbxxJihO0-taVuqL-yCD3YTtW-GzXSVs4PCg5TLoR_5wzMJoV6juu0a-2-T7IitGg-sxFg/exec",
   // Correos con acceso al Panel docente.
   TEACHERS: ["mariacadavid@serschool.edu.co"],
 
