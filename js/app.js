@@ -258,6 +258,7 @@ function viewHome() {
         stat("✅", st.solvedCount, "resueltos"),
         stat("⭐", st.xp, "XP"),
         stat("🏅", st.badges.length, "insignias"))),
+    routeCard(),
     h("h2", { class: "section-title" }, "🗺️ Misiones"),
     h("div", { class: "mission-grid" }, MISSIONS.map(missionCard)),
   );
@@ -334,7 +335,7 @@ function exerciseList(m) {
       return h("section", { class: `card level ${open ? "" : "locked"} ${l.extra ? "extra" : ""}` },
         h("div", { class: "level-head" },
           h("span", { class: "level-icon" }, open ? info.icon : "🔒"),
-          h("div", {}, h("div", { class: "muted" }, `Nivel ${li + 1}${l.extra ? " · ⭐ Extra (opcional)" : ""}`), h("h3", {}, info.name)),
+          h("div", {}, h("div", { class: "muted" }, `Nivel ${li + 1}${l.extra ? " · ⭐ Extra (opcional)" : ` de ${m.levels.filter((x) => !x.extra).length}`}`), h("h3", {}, info.name)),
           h("span", { class: "pill" }, `${done}/${l.exercises.length}`)),
         l.blurb && open && h("p", { class: "muted" }, l.blurb),
         !open && prev && h("p", { class: "muted" }, `Resuelve ${levelNeeded(prev)} ejercicios de "${levelInfo(prev).name}" para abrir este nivel.`),
@@ -345,6 +346,69 @@ function exerciseList(m) {
           return open && !pending ? h("a", { class: `chip ${solved ? "done" : ""}`, href: `#/ex/${ex.id}` }, label) : h("span", { class: "chip disabled" }, label);
         })));
     }));
+}
+
+// ---------- Metas: corto, mediano y largo plazo ----------
+// Ruta principal del curso: las misiones 1 a 8. Después viene el proyecto final con IA.
+const routeMissions = () => MISSIONS.filter((x) => x.id <= 8);
+const missionDone = (x) => !x.soon && missionStats(x).pct >= 80;
+
+// Texto de la meta corta de un nivel: cuántos faltan para abrir lo siguiente.
+function shortGoal(m, levelIdx) {
+  const l = m.levels[levelIdx];
+  if (l.extra) return "⭐ Nivel extra: es opcional, sin presión.";
+  const left = Math.max(0, levelNeeded(l) - levelSolved(l));
+  const isLastCore = !m.levels.slice(levelIdx + 1).some((x) => !x.extra);
+  if (left === 0) return isLastCore ? "✅ ¡Misión completada! Ya puedes pasar a la siguiente." : `✅ ¡Meta del nivel cumplida! Se abrió el Nivel ${levelIdx + 2}.`;
+  return isLastCore ? `🎯 Te faltan ${left} para completar la Misión ${m.id}.` : `🎯 Te faltan ${left} para abrir el Nivel ${levelIdx + 2}.`;
+}
+
+// Tres metas siempre a la vista: AHORA (este ejercicio y nivel), ESTA MISIÓN y MI META FINAL.
+function goalsStrip(m, levelIdx, ex) {
+  const l = m.levels[levelIdx];
+  const idx = l.exercises.findIndex((e) => e.id === ex.id);
+  const coreLevels = m.levels.filter((x) => !x.extra).length;
+  const stats = missionStats(m);
+  const route = routeMissions();
+  const done = route.filter(missionDone).length;
+  const dots = h("div", { class: "dots", "aria-label": `Ejercicio ${idx + 1} de ${l.exercises.length}` },
+    l.exercises.map((e, i) => h("span", { class: `dot ${S.state.solved[e.id] ? "ok" : ""} ${i === idx ? "now" : ""}`, title: `${i + 1}. ${e.title}` })));
+  return h("div", { class: "goals" },
+    h("div", { class: "goal now" },
+      h("div", { class: "goal-label" }, "🎯 Ahora"),
+      h("div", { class: "goal-big" }, `Ejercicio ${idx + 1} de ${l.exercises.length}`),
+      dots,
+      h("div", { class: "goal-note" }, shortGoal(m, levelIdx))),
+    h("div", { class: "goal" },
+      h("div", { class: "goal-label" }, `🗺️ Misión ${m.id}: ${m.title}`),
+      h("div", { class: "goal-big" }, l.extra ? `Nivel ${levelIdx + 1} (extra)` : `Nivel ${levelIdx + 1} de ${coreLevels}`),
+      h("div", { class: "progress" }, h("i", { style: { width: stats.pct + "%" } }), h("span", {}, `${stats.done}/${stats.total}`)),
+      h("div", { class: "goal-note" }, `${stats.pct}% de la misión`)),
+    h("div", { class: "goal" },
+      h("div", { class: "goal-label" }, "🏁 Mi meta final"),
+      h("div", { class: "goal-big" }, "Mi asistente con IA 🤖"),
+      h("div", { class: "progress" }, h("i", { style: { width: Math.round((done / route.length) * 100) + "%" } }), h("span", {}, `${done}/${route.length}`)),
+      h("div", { class: "goal-note" }, `Misión ${m.id} de ${route.length} · llevas ${done} completadas`)));
+}
+
+// Camino completo del curso, para saber siempre dónde estás y cuánto falta.
+function routeCard() {
+  const route = routeMissions();
+  const cur = route.find((x) => !x.soon && !missionDone(x) && missionUnlocked(x));
+  const node = (x) => {
+    const done = missionDone(x);
+    const state = done ? "done" : x === cur ? "cur" : x.soon || !missionUnlocked(x) ? "lock" : "open";
+    const s = x.soon ? null : missionStats(x);
+    return h(missionUnlocked(x) ? "a" : "div", { class: `rnode ${state}`, href: `#/m/${x.id}`, title: `${x.title}${s ? ` · ${s.pct}%` : ""}` },
+      h("div", { class: "rdot" }, done ? "✅" : x === cur ? "📍" : x.soon ? "🛠️" : x.emoji),
+      h("div", { class: "rname" }, `M${x.id}`), h("div", { class: "rsub" }, x.title));
+  };
+  const finalNode = h("div", { class: "rnode final" }, h("div", { class: "rdot" }, "🏁"), h("div", { class: "rname" }, "Final"), h("div", { class: "rsub" }, "Mi asistente con IA"));
+  const doneCount = route.filter(missionDone).length;
+  return h("section", { class: "card route" },
+    h("div", { class: "tp-head" }, h("h2", {}, "🧭 Mi camino"), h("span", { class: "pill" }, `${doneCount} de ${route.length} misiones · 5 semanas`)),
+    h("p", { class: "muted" }, "Así de cerca estás de tu meta. Cada misión se hace en una sesión de clase. Al final de las 8 construyes tu propio asistente con inteligencia artificial."),
+    h("div", { class: "route-line" }, route.map(node), finalNode));
 }
 
 // ---------- Ejercicio ----------
@@ -372,8 +436,12 @@ async function viewExercise(id) {
     feedback.replaceChildren(h("strong", {}, "💡 Pista: "), h("span", {}, ex.hint));
   } }, "💡 Pista");
 
+  const goals = h("div", {}, goalsStrip(m, levelIdx, ex));
+  const paintGoals = () => goals.replaceChildren(goalsStrip(m, levelIdx, ex));
+
   mount(
     h("nav", { class: "crumbs" }, h("a", { href: `#/m/${m.id}/ejercicios` }, `← Misión ${m.id}: ${m.title}`)),
+    goals,
     h("section", { class: "card exercise-card" },
       h("div", { class: "ex-head" },
         h("span", { class: "level-icon" }, info.icon),
@@ -400,8 +468,11 @@ async function viewExercise(id) {
       const gain = wasSolved ? 0 : markSolved(ex, { firstTry: priorFails === 0 && attempts === 1, usedHint });
       feedback.className = "feedback ok";
       const next = nextExercise(m);
+      paintGoals();
+      const lv = m.levels[levelIdx];
       feedback.replaceChildren(
         h("strong", {}, gain ? `🎉 ¡Correcto! +${gain} XP` : "🎉 ¡Correcto!"),
+        h("div", { class: "muted" }, `Llevas ${levelSolved(lv)} de ${lv.exercises.length} en este nivel. ${shortGoal(m, levelIdx)}`),
         h("div", { class: "row" },
           h("button", { class: "btn ghost", onclick: () => { st.variant[ex.id] = (st.variant[ex.id] || 0) + 1; save(); viewExercise(ex.id); } }, "🔁 Otra variante"),
           next ? h("a", { class: "btn primary", href: `#/ex/${next.id}` }, "Siguiente ▶") : h("a", { class: "btn primary", href: `#/m/${m.id}/ejercicios` }, "Volver a la misión")));

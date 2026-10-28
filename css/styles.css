@@ -289,3 +289,28 @@ ul.plain li { padding: 6px 0; border-bottom: 1px solid var(--line); }
 .nav-link.teacher-link { background: var(--accent); color: #1f1a3d; }
 .switch { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.9rem; cursor: pointer; }
 .switch input { width: 18px; height: 18px; accent-color: var(--brand); }
+
+/* ---------- Metas: corto, mediano y largo plazo ---------- */
+.goals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.goal { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; min-width: 0; }
+.goal.now { border: 2px solid var(--brand); background: var(--brand-soft); }
+.goal-label { font-size: 0.78rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.goal-big { font-weight: 800; font-size: 1.08rem; margin: 2px 0 6px; }
+.goal-note { font-size: 0.85rem; color: var(--muted); margin-top: 6px; }
+.goal.now .goal-note { color: var(--ink); font-weight: 600; }
+.dots { display: flex; gap: 6px; flex-wrap: wrap; }
+.dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); background: var(--card); }
+.dot.ok { background: var(--ok); border-color: var(--ok); }
+.dot.now { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); transform: scale(1.15); }
+.dot.ok.now { box-shadow: 0 0 0 3px var(--ok-soft); }
+.route-line { display: flex; gap: 6px; overflow-x: auto; padding: 6px 2px 10px; }
+.rnode { flex: 1 0 84px; text-align: center; text-decoration: none; color: var(--ink); padding: 8px 4px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); }
+.rnode .rdot { font-size: 1.6rem; }
+.rnode .rname { font-weight: 800; }
+.rnode .rsub { font-size: 0.72rem; color: var(--muted); line-height: 1.2; }
+.rnode.done { border-color: var(--ok); background: var(--ok-soft); }
+.rnode.cur { border-color: var(--brand); background: var(--brand-soft); transform: translateY(-3px); }
+.rnode.lock { opacity: 0.55; }
+.rnode.final { border-style: dashed; border-color: var(--accent); background: var(--warn-soft); }
+a.rnode:hover { border-color: var(--brand); }
+@media (max-width: 720px) { .goals { grid-template-columns: 1fr 1fr; gap: 8px; } .goal.now { grid-column: 1 / -1; } .goal { padding: 8px 10px; } .goal-big { font-size: 0.98rem; margin-bottom: 4px; } .goal-note { display: none; } .goal.now .goal-note { display: block; } .goal .progress { height: 18px; } }
