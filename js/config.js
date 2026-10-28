@@ -20,6 +20,9 @@ window.APP_CONFIG = {
   // Inactividad: aviso al estudiante y reporte a la profe (segundos).
   IDLE_WARN_SEC: 180,
   IDLE_REPORT_SEC: 300,
+  // Práctica con IA en el Laboratorio: topes por día para practicar con calma.
+  AI_DAILY_EX: 12,
+  AI_DAILY_XP: 150,
   // Capa anti-fotos (patrón en movimiento). Ponerlo en false si molesta a alguien.
   MOIRE: true,
 };

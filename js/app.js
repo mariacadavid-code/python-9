@@ -9,6 +9,7 @@ import { openExam } from "./exam.js";
 import { renderTeacher } from "./teacher.js";
 import { initA11y, listenButton, plainText, stopSpeaking } from "./a11y.js";
 import { buddy } from "./huellita.js";
+import { aiPanel } from "./ai.js";
 import { runPython, warmup } from "./py.js";
 
 const app = document.getElementById("app");
@@ -566,6 +567,7 @@ function celebrate() {
 }
 
 // ---------- Laboratorio (compilador libre) ----------
+let labTab = "ia";
 function viewLab() {
   if (!labUnlocked()) {
     mount(h("section", { class: "card center" },
@@ -591,10 +593,14 @@ function viewLab() {
     run.disabled = false;
     run.textContent = "▶ Ejecutar";
   } }, "▶ Ejecutar");
-  mount(h("section", { class: "card" },
-    h("h1", {}, "💻 Laboratorio"),
+  const free = h("section", { class: "card" },
     h("p", { class: "muted" }, "Python 3 de verdad, corriendo en tu navegador. Experimenta sin miedo: aquí nada da puntos ni quita."),
-    ed.el, h("div", { class: "row" }, run), stdin, h("div", { class: "label" }, "Salida"), out));
+    ed.el, h("div", { class: "row" }, run), stdin, h("div", { class: "label" }, "Salida"), out);
+  const tab = (id, label) => h("a", { href: "#/lab", class: labTab === id ? "active" : "", onclick: (e) => { e.preventDefault(); labTab = id; viewLab(); } }, label);
+  mount(
+    h("h1", { style: { margin: "0 0 12px" } }, "Laboratorio"),
+    h("div", { class: "tabs" }, tab("ia", "Práctica con IA"), tab("libre", "Laboratorio libre")),
+    labTab === "ia" ? aiPanel({ celebrate }) : free);
 }
 
 // ---------- Premios e insignias ----------

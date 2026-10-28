@@ -22,6 +22,7 @@ export const BADGES = {
   "sin-pistas": { emoji: "🧠", name: "Sin pistas", desc: "10 ejercicios sin usar pistas" },
   "examen-perfecto": { emoji: "💯", name: "Examen perfecto", desc: "Sacaste todo bien en un examen" },
   "mision-1": { emoji: "🏅", name: "Misión 1", desc: "Completaste Primeros pasos" },
+  "ia-nivel3": { emoji: "🤖", name: "Entrenamiento IA", desc: "Llegaste al nivel 3 en la práctica con IA" },
 };
 
 export function defaultState() {

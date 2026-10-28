@@ -263,6 +263,7 @@ function studentView(email) {
       h("div", { class: "tp-cards" },
         h("div", { class: "tp-card" }, h("div", { class: "tp-n" }, `${r.emoji} ${r.name}`), h("div", { class: "muted" }, `${s.xp} XP`)),
         h("div", { class: "tp-card" }, h("div", { class: "tp-n" }, s.resueltos), h("div", { class: "muted" }, "ejercicios resueltos")),
+        s.ia ? h("div", { class: "tp-card" }, h("div", { class: "tp-n" }, `Nivel ${s.ia.nivel}`), h("div", { class: "muted" }, `práctica con IA · ${s.ia.hechos} ejercicios`)) : null,
         (() => { const np = nextPrize(s.xp); return h("div", { class: "tp-card" }, h("div", { class: "tp-n" }, np ? `${np.n} pts` : "¡Todos!"), h("div", { class: "muted" }, np ? `para ${np.name}` : "premios individuales al alcance")); })(),
         h("div", { class: "tp-card" }, h("div", { class: "tp-n" }, s.alertas), h("div", { class: "muted" }, "alertas")),
         h("div", { class: "tp-card" }, h("div", { class: "tp-n" }, ago(s.ultimo)), h("div", { class: "muted" }, "último acceso")))),

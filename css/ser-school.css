@@ -190,3 +190,24 @@ a.mission:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(38, 
 @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-5px) rotate(2deg); } }
 @keyframes jump { 0% { transform: translateY(0); } 35% { transform: translateY(-18px) rotate(-8deg); } 70% { transform: translateY(0) rotate(6deg); } 100% { transform: translateY(0); } }
 @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(38, 88, 138, 0.35); } 50% { box-shadow: 0 0 0 9px rgba(38, 88, 138, 0); } }
+
+/* ---------- Práctica con IA ---------- */
+.ai { display: grid; gap: 20px; }
+.ai-head { display: grid; gap: 16px; }
+.ai-meta { display: grid; grid-template-columns: 1.3fr 1fr; gap: 20px; }
+.ai-meta > * { min-width: 0; }
+.ai-scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 8px; }
+.ai-scale div { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 4px; text-align: center; background: var(--card); transition: background 0.3s; }
+.ai-scale div b { display: block; font-weight: 800; font-size: 1.4rem; line-height: 1; }
+.ai-scale div span { font-size: 0.68rem; color: var(--muted); }
+.ai-scale div.on { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+.ai-scale div.on span { color: var(--brand-ink); opacity: 0.85; }
+.ai-scale div.past { background: var(--lime); border-color: var(--lime); color: #344151; }
+.ai-scale div.past span { color: #344151; }
+.ai-pips { display: flex; gap: 8px; margin: 8px 0 10px; min-height: 24px; }
+.ai-pips i { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--line); background: var(--brand-soft); }
+.ai-pips i.y { background: var(--lime); border-color: var(--lime); }
+.ai-pips i.n { background: var(--bad-soft); border-color: var(--bad); }
+.ai-stage { display: grid; gap: 14px; min-height: 90px; }
+.ai-stage h2 { margin: 0; }
+@media (max-width: 820px) { .ai-meta { grid-template-columns: 1fr; } }

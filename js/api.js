@@ -51,6 +51,14 @@ const DEFAULT_PRIZES = [
   { id: "clase-libre", premio: "Clase libre", costo: 6000, tipo: "grupal", max: 1, requisitos: [], descripcion: "Se gana cuando el promedio de todo el grupo llega a la meta." },
 ];
 
+const DEMO_AI = {
+  1: [{ titulo: "Mi mascota", enunciado: "Crea la variable `mascota` con el texto \"loro\" e imprime: Mi mascota es un loro", codigo_inicial: "# Escribe aquí tu programa", solucion: "mascota = \"loro\"\nprint(\"Mi mascota es un\", mascota)", pista: "Usa print con una coma entre el texto y la variable.", pruebas: [{ antes: "", entradas: [] }] }],
+  2: [{ titulo: "Goles del partido", enunciado: "Las variables `goles1` y `goles2` ya existen. Imprime cuántos goles se hicieron en total.", codigo_inicial: "# goles1 y goles2 ya existen", solucion: "print(goles1 + goles2)", pista: "Suma las dos variables dentro del print.", pruebas: [{ antes: "goles1 = 2\ngoles2 = 1", entradas: [] }, { antes: "goles1 = 0\ngoles2 = 4", entradas: [] }, { antes: "goles1 = 3\ngoles2 = 3", entradas: [] }] }],
+  3: [{ titulo: "Promedio de dos notas", enunciado: "Las variables `n1` y `n2` ya existen. Imprime su promedio.", codigo_inicial: "# n1 y n2 ya existen", solucion: "print((n1 + n2) / 2)", pista: "Primero suma, con paréntesis, y luego divide entre 2.", pruebas: [{ antes: "n1 = 4\nn2 = 2", entradas: [] }, { antes: "n1 = 5\nn2 = 5", entradas: [] }, { antes: "n1 = 3\nn2 = 1", entradas: [] }] }],
+  4: [{ titulo: "Precio con descuento", enunciado: "Las variables `precio` y `descuento` (un porcentaje entero) ya existen. Imprime lo que se paga después de descontar.", codigo_inicial: "# precio y descuento ya existen", solucion: "pagas = precio - precio * descuento // 100\nprint(pagas)", pista: "El descuento es precio * descuento // 100. Réstaselo al precio.", pruebas: [{ antes: "precio = 20000\ndescuento = 10", entradas: [] }, { antes: "precio = 5000\ndescuento = 20", entradas: [] }, { antes: "precio = 12000\ndescuento = 50", entradas: [] }] }],
+  5: [{ titulo: "Segundos a reloj", enunciado: "La variable `total` son segundos y ya existe. Imprime minutos y segundos así: `M min y S s`.", codigo_inicial: "# total ya existe", solucion: "print(total // 60, \"min y\", total % 60, \"s\")", pista: "Los minutos son total // 60 y los segundos sobrantes son total % 60.", pruebas: [{ antes: "total = 125", entradas: [] }, { antes: "total = 59", entradas: [] }, { antes: "total = 300", entradas: [] }] }],
+};
+
 function demo(action, p) {
   const d = db();
   d.students ??= {};
@@ -127,6 +135,18 @@ function demo(action, p) {
       d.redeems.unshift({ fecha: new Date().toISOString(), email: me.email, nombre: me.name, premio: pr.premio, costo: pr.costo, estado: "pendiente", detalle: p.resumen || "", premio_id: pr.id });
       break;
     }
+    case "aiPractice": {
+      let off = false;
+      try { off = localStorage.getItem("py9-demo-noai") === "1"; } catch {}
+      if (off) throw new Error("IA_NO_ACTIVA");
+      const lv = Math.max(1, Math.min(5, Number(p.nivel) || 1));
+      const pool = DEMO_AI[lv];
+      const e = pool[Math.floor(Math.random() * pool.length)];
+      out = { id: "demo" + lv + Math.floor(Math.random() * 1000), origen: "ia", ejercicio: e };
+      break;
+    }
+    case "aiReport":
+      break;
     case "prizesInfo": {
       const g = d.students[me.email]?.group;
       const mates = Object.entries(d.students).filter(([e, x]) => !CFG.TEACHERS.includes(e) && g && x.group === g);
