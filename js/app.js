@@ -29,7 +29,7 @@ function showLogin(error) {
   document.getElementById("topbar").hidden = true;
   mount(
     h("section", { class: "login card" },
-      h("div", { class: "logo-big" }, "🐍"),
+      h("img", { src: "img/logo-ser-school.png", alt: "Ser School", style: { height: "72px", margin: "0 auto 8px", display: "block" } }),
       h("h1", {}, "Python Practicando"),
       h("p", { class: "muted" }, "Grado 9° · Serschool"),
       h("p", {}, `Entra con tu correo del colegio (@${CFG.DOMAIN}).`),
