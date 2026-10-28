@@ -46,10 +46,9 @@ function saveDb(d) {
 }
 
 const DEFAULT_PRIZES = [
-  { id: "musica", premio: "Elegir la música de la clase 🎵", costo: 30 },
-  { id: "puesto", premio: "Elegir puesto por una semana 💺", costo: 50 },
-  { id: "comodin", premio: "Comodín: entregar una tarea un día después 🃏", costo: 90 },
-  { id: "decima", premio: "+0,2 en la nota del periodo ⭐", costo: 150 },
+  { id: "chocolatina", premio: "Chocolatina Jet pequeña", costo: 2500, tipo: "individual", max: 1, requisitos: [], descripcion: "Una chocolatina Jet pequeña." },
+  { id: "competente", premio: "Vale por un \"competente\"", costo: 4000, tipo: "individual", max: 1, requisitos: ["misiones8", "proyecto", "sin_bloqueos"], descripcion: "Convierte un bajo progreso o una nota no competente en competente. Solo se puede reclamar una vez." },
+  { id: "clase-libre", premio: "Clase libre", costo: 6000, tipo: "grupal", max: 1, requisitos: [], descripcion: "Se gana cuando el promedio de todo el grupo llega a la meta." },
 ];
 
 function demo(action, p) {
@@ -119,9 +118,27 @@ function demo(action, p) {
     case "examStatus":
       out = d.exams[examKey(p.examId)] || { estado: "pendiente" };
       break;
-    case "redeem":
-      d.redeems.unshift({ fecha: new Date().toISOString(), email: me.email, nombre: me.name, premio: p.prize.premio, costo: p.prize.costo, estado: "pendiente" });
+    case "redeem": {
+      const pr = DEFAULT_PRIZES.find((x) => x.id === p.prize.id);
+      if (!pr) throw new Error("Ese premio ya no existe.");
+      if (pr.tipo === "grupal") throw new Error("Este premio es del grupo: tu profe lo coordina cuando el grupo llegue a la meta.");
+      if ((d.students[me.email]?.state?.xp || 0) < pr.costo) throw new Error("Todavía no tienes los puntos necesarios.");
+      if (d.redeems.some((c) => c.email === me.email && c.premio_id === pr.id)) throw new Error("Ya reclamaste este premio. Solo se puede una vez.");
+      d.redeems.unshift({ fecha: new Date().toISOString(), email: me.email, nombre: me.name, premio: pr.premio, costo: pr.costo, estado: "pendiente", detalle: p.resumen || "", premio_id: pr.id });
       break;
+    }
+    case "prizesInfo": {
+      const g = d.students[me.email]?.group;
+      const mates = Object.entries(d.students).filter(([e, x]) => !CFG.TEACHERS.includes(e) && g && x.group === g);
+      const avg = mates.length ? Math.round(mates.reduce((a, [, x]) => a + (x.state?.xp || 0), 0) / mates.length) : 0;
+      out = {
+        prizes: DEFAULT_PRIZES,
+        group: g ? { nombre: g, promedio: avg, estudiantes: mates.length, activos: mates.length } : null,
+        incidentes: d.events.filter((e) => e.email === me.email && e.modo === "examen" && e.grave).length,
+        canjes: d.redeems.filter((c) => c.email === me.email).map((c) => ({ premio: c.premio_id, estado: c.estado })),
+      };
+      break;
+    }
     case "teacherOverview":
       needTeacher();
       out = {
@@ -139,6 +156,7 @@ function demo(action, p) {
         exams: Object.entries(d.exams).map(([k, ex]) => ({ email: k.split("::")[0], nombre: d.students[k.split("::")[0]]?.name, examen: k.split("::")[1], ...ex })),
         events: d.events.slice(0, 250),
         redeems: d.redeems.map((r, i) => ({ fila: i, ...r })),
+        prizes: DEFAULT_PRIZES,
       };
       break;
     case "teacherSetGroup": {

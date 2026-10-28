@@ -8,6 +8,7 @@ import { TYPE_INFO, prepare, render, solutionText, editor } from "./exercises.js
 import { openExam } from "./exam.js";
 import { renderTeacher } from "./teacher.js";
 import { initA11y, listenButton, plainText, stopSpeaking } from "./a11y.js";
+import { buddy } from "./huellita.js";
 import { runPython, warmup } from "./py.js";
 
 const app = document.getElementById("app");
@@ -197,24 +198,20 @@ function renderTopbar() {
   const r = rankFor(st.xp);
   const link = (href, label, extra = "") => h("a", { href, class: `nav-link ${extra} ${location.hash.startsWith(href) ? "active" : ""}` }, label);
   bar.replaceChildren(
-    h("a", { href: "#/", class: "brand" }, h("span", { class: "logo" }, "🐍"), h("span", {}, "Python 9°")),
+    h("a", { href: "#/", class: "brand", "aria-label": "Ser School · Python 9°" }, h("img", { src: "img/logo-ser-school.png", alt: "Ser School" })),
     h("nav", {},
-      isTeacher && link("#/profe", "🧑‍🏫 Panel docente", "teacher-link"),
-      link("#/", isTeacher ? "🗺️ Curso" : "🏠 Inicio"),
-      link("#/lab", labUnlocked() ? "💻 Laboratorio" : "🔒 Laboratorio"),
-      !isTeacher && link("#/premios", "🎁 Premios")),
+      isTeacher && link("#/profe", "Panel docente", "teacher-link"),
+      link("#/", isTeacher ? "Curso" : "Inicio"),
+      link("#/lab", labUnlocked() ? "Laboratorio" : "🔒 Laboratorio"),
+      !isTeacher && link("#/premios", "Premios")),
     isTeacher ? h("div", { class: "me" },
       h("label", { class: "switch", title: "Con el modo abierto puedes entrar a cualquier misión y nivel sin desbloquear nada. Apágalo para ver el curso como lo ve un estudiante." },
         h("input", { type: "checkbox", checked: teacherOpen(), onchange: (e) => setTeacherOpen(e.target.checked) }),
-        h("span", {}, "🔓 Todo abierto")),
+        h("span", {}, "Todo abierto")),
       h("span", { class: "pill", title: "Tu avance y tus intentos no se guardan ni se mezclan con los de los estudiantes." }, "Modo docente")) :
     h("div", { class: "me" },
-      h("div", { class: "rank", title: r.next ? `Siguiente rango: ${r.next.name} (${r.next.min} XP)` : "¡Rango máximo!" },
-        h("span", { class: "rank-emoji" }, r.emoji),
-        h("div", {},
-          h("div", { class: "rank-name" }, `${r.name} · ${st.xp} XP`),
-          h("div", { class: "xpbar" }, h("i", { style: { width: r.pct + "%" } })))),
-      h("div", { class: "coins", title: "Pycoins para canjear premios" }, `🪙 ${st.coins}`)),
+      h("span", { class: "rank-chip", title: r.next ? `Siguiente rango: ${r.next.name} (${r.next.min} puntos)` : "¡Rango máximo!" }, `${r.emoji} ${r.name}`),
+      h("div", { class: "pts", title: "Tus puntos. Con ellos llegas a los premios." }, h("b", {}, st.xp), " puntos")),
   );
 }
 
@@ -244,28 +241,37 @@ function examBanner() {
 function viewHome() {
   const st = S.state;
   const first = (S.user.name || "").split(" ")[0];
-  const m1 = MISSIONS[0];
-  const next = nextExercise(m1);
+  const cur = routeMissions().find((x) => !x.soon && !missionDone(x) && missionUnlocked(x)) || MISSIONS[0];
+  const next = !st.pendingExam ? nextExercise(cur) : null;
+  const found = next ? findExercise(next.id) : null;
+  const pos = found ? found.mission.levels[found.levelIdx].exercises.findIndex((e) => e.id === next.id) + 1 : 0;
+  const total = found ? found.mission.levels[found.levelIdx].exercises.length : 0;
+  const hello = buddy(
+    !st.read["m" + cur.id] ? `¡Hola, ${first}! Empecemos leyendo la ficha de la Misión ${cur.id}. Es cortita.`
+      : next ? `¡Hola, ${first}! Hoy toca el ejercicio ${pos} de ${total}. Tú puedes.`
+        : `¡Hola, ${first}! Elige un ejercicio y seguimos juntas.`, "hi");
+  const cta = st.pendingExam ? h("button", { class: "btn primary big", onclick: () => openExam() }, "Presentar mi examen")
+    : !st.read["m" + cur.id] ? h("a", { class: "btn primary big", href: `#/m/${cur.id}` }, `Empezar la Misión ${cur.id}`)
+      : next ? h("a", { class: "btn primary big", href: `#/ex/${next.id}` }, `Seguir: ejercicio ${pos} de ${total}`)
+        : h("a", { class: "btn primary big", href: `#/m/${cur.id}/ejercicios` }, "Ver ejercicios");
   mount(
     examBanner(),
-    h("section", { class: "hero card" },
-      h("div", {},
-        h("h1", {}, `¡Hola, ${first}! 👋`),
-        h("p", {}, "Cada misión tiene un dossier para leer y muchos ejercicios cortos. Repetir con variantes distintas es lo que hace que se te quede en la memoria. 🧠"),
-        h("div", { class: "row" },
-          !st.read.m1 ? h("a", { class: "btn primary big", href: "#/m/1" }, "Empezar Misión 1 📚")
-            : next && !st.pendingExam ? h("a", { class: "btn primary big", href: `#/ex/${next.id}` }, "Seguir practicando ▶")
-              : h("a", { class: "btn primary big", href: "#/m/1/ejercicios" }, "Ver ejercicios"))),
-      h("div", { class: "hero-stats" },
-        stat("✅", st.solvedCount, "resueltos"),
-        stat("⭐", st.xp, "XP"),
-        stat("🏅", st.badges.length, "insignias"))),
+    h("section", { class: "hero2" },
+      h("span", { class: "tagpill lime" }, "Python · Grado 9° · 5 semanas"),
+      h("h1", {}, "Deja tu ", h("em", {}, "huella"), " en el código"),
+      h("p", { class: "lead" }, "Aprende a tu ritmo, con ejercicios cortos y una compañera que te anima. Al final de las 8 misiones construyes tu propio asistente con inteligencia artificial."),
+      hello.el,
+      h("div", { class: "hero-actions" }, cta),
+      h("div", { class: "hero-stats2" },
+        h("span", {}, h("b", {}, st.solvedCount), " resueltos"),
+        h("span", {}, h("b", {}, st.xp), " puntos"),
+        h("span", {}, h("b", {}, st.badges.length), " insignias"))),
+    found ? goalsStrip(found.mission, found.levelIdx, next) : null,
     routeCard(),
-    h("h2", { class: "section-title" }, "🗺️ Misiones"),
+    h("h2", { class: "section-title" }, "Misiones"),
     h("div", { class: "mission-grid" }, MISSIONS.map(missionCard)),
   );
 }
-const stat = (icon, n, label) => h("div", { class: "stat" }, h("div", { class: "stat-n" }, `${icon} ${n}`), h("div", { class: "muted" }, label));
 
 function missionCard(m) {
   const open = missionUnlocked(m);
@@ -431,6 +437,7 @@ async function viewExercise(id) {
   const body = h("div", {}, h("p", { class: "center loading" }, "Preparando tu variante… 🐍"));
   const feedback = h("div", { class: "feedback", hidden: true });
   const checkBtn = h("button", { class: "btn primary big", disabled: true }, "Comprobar ✔");
+  const exBuddy = buddy("Lee con calma, una línea a la vez. Aquí estoy si me necesitas.", "hi");
   let inst = null;
 
   // Pistas por escalones: primero una pregunta, luego una ayudita y al final un ejemplo parecido ya resuelto.
@@ -459,6 +466,7 @@ async function viewExercise(id) {
         h("span", { class: "muted" }, "Ahora haz el tuyo, que tiene datos distintos. ¡Tú puedes!")));
     }
     hintStep++;
+    exBuddy.say("Buena idea pedir una pista. Pensar con ayuda también es aprender.", "think");
     if (hintStep < 3) { hintBtn.disabled = false; hintBtn.textContent = `💡 Otra pista (${hintStep + 1} de 3)`; } else hintBtn.textContent = "💡 No hay más pistas";
   } }, "💡 Pista (1 de 3)");
 
@@ -470,7 +478,7 @@ async function viewExercise(id) {
     if (Date.now() - helpSent < 60000) return toast("Ya le avisaste a tu profe. ¡Lo verá en su panel! 🙋");
     helpSent = Date.now();
     api.call("event", { event: { modo: "practica", tipo: "pide_ayuda", detalle: `${m.title} · ${ex.title}`, grave: false, examId: "" } })
-      .then(() => toast("🙋 Le avisé a tu profe. Mientras llega, prueba una pista.", "win", 5000))
+      .then(() => { exBuddy.say("Listo, le avisé a tu profe. Ya viene en camino.", "hug", true); toast("Le avisé a tu profe. Mientras llega, prueba una pista.", "win", 5000); })
       .catch(() => toast("No pude avisarle ahora. Levanta la mano 🙋", "warn"));
   } }, "🙋 Necesito ayuda");
 
@@ -485,6 +493,7 @@ async function viewExercise(id) {
         h("span", { class: "level-icon" }, info.icon),
         h("div", {}, h("div", { class: "muted" }, `Nivel ${levelIdx + 1} · ${info.name}`), h("h1", {}, ex.title)),
         h("span", { class: "pill" }, wasSolved ? "✅ Resuelto · práctica libre" : `+${XP_BY_TYPE[ex.type]} XP`)),
+      exBuddy.el,
       h("p", { class: "ask" }, info.ask),
       body,
       feedback,
@@ -508,6 +517,7 @@ async function viewExercise(id) {
       feedback.className = "feedback ok";
       const next = nextExercise(m);
       paintGoals();
+      exBuddy.say("¡Bien hecho! " + shortGoal(m, levelIdx).replace(/^[^A-Za-z¡]+/, ""), "cheer", true);
       const lv = m.levels[levelIdx];
       feedback.replaceChildren(
         h("strong", {}, gain ? `🎉 ¡Correcto! +${gain} XP` : "🎉 ¡Correcto!"),
@@ -527,6 +537,7 @@ async function viewExercise(id) {
     feedback.className = "feedback bad";
     const cheers = ["Equivocarse es parte de aprender 💪", "¡Casi! Respira y vuelve a mirar el enunciado 👀", "Cada intento te acerca más 🚀"];
     feedback.replaceChildren(h("strong", {}, res.msg), res.out != null && h("pre", { class: "console" }, res.out), h("div", { class: "cheer" }, cheers[(attempts - 1) % cheers.length]));
+    exBuddy.say("Sin afán. Mira otra vez, línea por línea.", "hug");
     checkBtn.disabled = false;
     // Cada 2 fallos: se muestra la solución y llega una variante nueva para practicar de verdad.
     if (fails % 2 === 0) {
@@ -548,7 +559,7 @@ async function viewExercise(id) {
 function celebrate() {
   const layer = h("div", { class: "confetti", "aria-hidden": "true" });
   for (let i = 0; i < 24; i++) {
-    layer.append(h("i", { style: { left: Math.random() * 100 + "%", animationDelay: Math.random() * 0.4 + "s", background: `hsl(${Math.random() * 360} 85% 60%)` } }));
+    layer.append(h("i", { style: { left: Math.random() * 100 + "%", animationDelay: Math.random() * 0.4 + "s", background: ["#CCEF3A", "#26588A", "#ffffff", "#344151"][i % 4] } }));
   }
   document.body.append(layer);
   setTimeout(() => layer.remove(), 2200);
@@ -587,42 +598,87 @@ function viewLab() {
 }
 
 // ---------- Premios e insignias ----------
-function viewPrizes() {
+const PRIZE_ART = {
+  chocolatina: ["var(--lime-soft)", '<svg viewBox="0 0 80 80" fill="none" stroke="#344151" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"><rect x="12" y="26" width="56" height="30" rx="8" fill="#26588A"/><path d="M12 41h56M30 26v30M50 26v30" stroke="#F4F4F4"/><path d="M26 26 14 18M54 26l12-8"/></svg>'],
+  competente: ["var(--brand-soft)", '<svg viewBox="0 0 80 80" fill="none" stroke="#26588A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="20" width="60" height="40" rx="9"/><path d="M10 34h60M24 48h16M24 54h28"/><circle cx="58" cy="46" r="6" fill="#CCEF3A" stroke="#CCEF3A"/></svg>'],
+  "clase-libre": ["var(--brand-soft)", '<svg viewBox="0 0 80 80" fill="none" stroke="#26588A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><circle cx="26" cy="30" r="8"/><circle cx="54" cy="30" r="8"/><path d="M10 62a16 16 0 0 1 32 0M38 62a16 16 0 0 1 32 0"/><path d="M40 12v7" stroke="#CCEF3A" stroke-width="6"/></svg>'],
+};
+const REQ_LABEL = {
+  misiones8: "Las 8 misiones completadas",
+  proyecto: "Proyecto final con IA entregado",
+  sin_bloqueos: "Ningún examen bloqueado",
+};
+const fmtN = (n) => Number(n).toLocaleString("es-CO");
+
+async function viewPrizes() {
+  mount(h("p", { class: "center loading" }, "Cargando tus premios…"));
+  let info;
+  try { info = await api.call("prizesInfo"); } catch { info = { prizes, group: null, incidentes: 0, canjes: [] }; }
   const st = S.state;
   const r = rankFor(st.xp);
+  const route = routeMissions();
+  const reqOk = {
+    misiones8: route.every(missionDone),
+    proyecto: !!st.projectDone,
+    sin_bloqueos: (info.incidentes || 0) === 0,
+  };
+  const claimed = (id) => (info.canjes || []).filter((c) => c.premio === id);
+
+  const card = (p) => {
+    const [bg, art] = PRIZE_ART[p.id] || PRIZE_ART.chocolatina;
+    const group = p.tipo === "grupal";
+    const have = group ? Math.round(info.group?.promedio || 0) : st.xp;
+    const pct = Math.min(100, Math.round((have / p.costo) * 100));
+    const reqs = (p.requisitos || []).map((k) => ({ k, ok: !!reqOk[k] }));
+    const mine = claimed(p.id);
+    const done = !group && mine.length >= (p.max || 1);
+    const enough = have >= p.costo;
+    const ready = !group && enough && reqs.every((x) => x.ok) && !done;
+    const pending = reqs.filter((x) => !x.ok).length + (enough ? 0 : 1);
+    return h("article", { class: "card prize2" },
+      h("div", { class: "art", style: { background: bg }, html: art }),
+      h("span", { class: `tagpill ${group ? "lime" : ""}` }, group ? "Premio de grupo" : p.max === 1 ? "Máximo 1 por estudiante" : "Premio individual"),
+      h("h3", {}, p.premio),
+      h("p", { class: "cost" }, fmtN(p.costo), " ", h("small", {}, group ? "puntos de promedio" : "puntos")),
+      p.descripcion && h("p", { class: "meta" }, p.descripcion),
+      h("div", {}, h("div", { class: "bar" }, h("i", { style: { width: Math.max(pct, 2) + "%" } })),
+        h("p", { class: "meta" }, group
+          ? (enough ? "¡Meta lograda! Tu profe coordina la clase libre." : `Promedio de ${info.group?.nombre || "tu grupo"}: ${fmtN(have)} de ${fmtN(p.costo)}`)
+          : (enough ? "¡Ya tienes los puntos!" : `Tienes ${fmtN(have)} · te faltan ${fmtN(p.costo - have)}. ¡Vas por buen camino!`))),
+      reqs.length ? h("ul", { class: "reqs" }, reqs.map((x) => h("li", { class: x.ok ? "ok" : "" }, h("span", { class: "ck" }, x.ok ? "✓" : "🔒"), REQ_LABEL[x.k] || x.k))) : null,
+      group ? h("p", { class: "meta" }, `${info.group?.estudiantes || 0} estudiantes · ${info.group?.activos || 0} activos esta semana. Se avanza ayudándose.`)
+        : done ? h("button", { class: "btn", disabled: true }, mine[0].estado === "entregado" ? "Entregado ✓" : "Reclamado · en revisión")
+          : h("button", { class: ready ? "btn primary" : "btn", disabled: !ready, onclick: () => redeem(p) }, ready ? "Reclamar" : pending > 1 || !enough ? "Aún no alcanza" : "Faltan requisitos"));
+  };
+
   mount(
+    h("section", {},
+      h("p", { class: "eyebrow" }, "Mis premios"),
+      h("h1", { style: { margin: "8px 0 18px" } }, "Metas lejanas, pero alcanzables"),
+      h("div", { class: "prize-grid2" }, (info.prizes || prizes).map(card)),
+      h("p", { class: "muted", style: { marginTop: "14px", fontSize: "0.88rem" } }, "Los puntos no se gastan: se acumulan. Cuando cumples la meta y los requisitos, reclamas y tu profe lo revisa y te lo entrega.")),
     h("section", { class: "card" },
-      h("h1", {}, "🎁 Tienda de premios"),
-      h("p", {}, `Tienes `, h("strong", {}, `🪙 ${st.coins} Pycoins`), `. Los ganas resolviendo ejercicios y exámenes. Tu profe aprueba cada canje.`),
-      h("div", { class: "prize-grid" }, prizes.map((p) => h("div", { class: "prize card" },
-        h("h3", {}, p.premio),
-        h("div", { class: "pill" }, `🪙 ${p.costo}`),
-        h("button", { class: "btn primary", disabled: st.coins < p.costo, onclick: () => redeem(p) }, st.coins < p.costo ? `Te faltan ${p.costo - st.coins}` : "Canjear"))))),
-    h("section", { class: "card" },
-      h("h2", {}, "🏅 Insignias"),
+      h("h2", {}, "Mis insignias"),
       h("div", { class: "badge-grid" }, Object.entries(BADGES).map(([id, b]) => h("div", { class: `badge ${st.badges.includes(id) ? "earned" : ""}` },
         h("div", { class: "b-emoji" }, st.badges.includes(id) ? b.emoji : "❔"),
         h("strong", {}, b.name), h("small", { class: "muted" }, b.desc))))),
     h("section", { class: "card" },
-      h("h2", {}, "📈 Rangos"),
-      h("ol", { class: "ranks" }, RANKS.map((x) => h("li", { class: x.name === r.name ? "current" : "" }, `${x.emoji} ${x.name} — desde ${x.min} XP`)))));
+      h("h2", {}, "Rangos"),
+      h("ol", { class: "ranks" }, RANKS.map((x) => h("li", { class: x.name === r.name ? "current" : "" }, `${x.emoji} ${x.name} — desde ${fmtN(x.min)} puntos`)))));
 }
 
 function redeem(p) {
   modal({
-    title: "¿Canjear este premio?",
-    body: h("p", {}, `${p.premio} por 🪙 ${p.costo}. Tu profe recibirá la solicitud.`),
+    title: "¿Reclamar este premio?",
+    body: h("p", {}, `${p.premio}. Tu profe recibirá la solicitud, la revisará y te lo entregará.`),
     actions: [
       { label: "Cancelar", kind: "ghost" },
-      { label: "Sí, canjear", kind: "primary", onclick: async () => {
+      { label: "Sí, reclamar", kind: "primary", onclick: async () => {
         try {
-          await api.call("redeem", { prize: p });
-          S.state.coins -= p.costo;
-          S.state.spent += p.costo;
-          save();
-          toast("🎉 ¡Solicitud enviada! Tu profe la revisará.", "win");
+          await api.call("redeem", { prize: { id: p.id }, resumen: `misiones completadas: ${routeMissions().filter(missionDone).length}/8 · puntos: ${S.state.xp}` });
+          toast("¡Solicitud enviada! Tu profe la revisará.", "win");
           viewPrizes();
-        } catch (e) { toast("No se pudo canjear: " + e.message, "error"); }
+        } catch (e) { toast("No se pudo reclamar: " + e.message, "error"); }
       } },
     ],
   });

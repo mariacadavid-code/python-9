@@ -165,6 +165,25 @@ function tabView(tab) {
 }
 
 // --------------------------- Progreso -------------------------------------------------------
+// La clase libre es un premio de grupo: se gana cuando el promedio de puntos llega a la meta.
+function groupGoalCard(avg, n) {
+  const prize = (data.prizes || []).find((x) => x.tipo === "grupal");
+  if (!prize) return null;
+  const pct = Math.min(100, Math.round((avg / prize.costo) * 100));
+  const g = getGroup();
+  const label = g === ALL ? "de todos los grupos" : g === NONE ? "de los estudiantes sin grupo" : `del grupo ${g}`;
+  return h("div", { class: "card", style: { marginBottom: "16px" } },
+    h("div", { class: "tp-head" }, h("h3", { style: { margin: 0 } }, `${prize.premio}: meta ${label}`), h("span", { class: pct >= 100 ? "pill" : "muted" }, pct >= 100 ? "¡Meta lograda!" : `${pct} %`)),
+    h("div", { class: "progress", style: { margin: "12px 0 6px" } }, h("i", { style: { width: Math.max(pct, 2) + "%" } })),
+    h("p", { class: "muted", style: { margin: 0, fontSize: "0.88rem" } }, `Promedio actual: ${avg.toLocaleString("es-CO")} de ${prize.costo.toLocaleString("es-CO")} puntos por estudiante (${n} estudiantes). ${pct >= 100 ? "Ya pueden tener su clase libre: coordínala con el grupo." : "El promedio cuenta a todos, también a quienes no han entrado."}`));
+}
+
+function nextPrize(xp) {
+  const list = (data.prizes || []).filter((x) => x.tipo !== "grupal").sort((a, b) => a.costo - b.costo);
+  const nxt = list.find((x) => xp < x.costo);
+  return nxt ? { n: (nxt.costo - xp).toLocaleString("es-CO"), name: nxt.premio } : null;
+}
+
 function progressTab() {
   const list = myStudents();
   const ms = playable();
@@ -189,7 +208,8 @@ function progressTab() {
 
   return h("div", {},
     h("div", { class: "tp-cards" },
-      card(list.length, "estudiantes"), card(active24, "activos en 24 h"), card(avgXp, "XP promedio"), card(blocked, "exámenes bloqueados")),
+      card(list.length, "estudiantes"), card(active24, "activos en 24 h"), card(avgXp, "puntos promedio"), card(blocked, "exámenes bloqueados")),
+    groupGoalCard(avgXp, list.length),
     h("div", { class: "row" },
       h("label", { class: "muted" }, "Ordenar por "),
       h("select", { class: "select", onchange: (e) => { sortBy = e.target.value; rerender(); } },
@@ -243,7 +263,7 @@ function studentView(email) {
       h("div", { class: "tp-cards" },
         h("div", { class: "tp-card" }, h("div", { class: "tp-n" }, `${r.emoji} ${r.name}`), h("div", { class: "muted" }, `${s.xp} XP`)),
         h("div", { class: "tp-card" }, h("div", { class: "tp-n" }, s.resueltos), h("div", { class: "muted" }, "ejercicios resueltos")),
-        h("div", { class: "tp-card" }, h("div", { class: "tp-n" }, `🪙 ${s.coins}`), h("div", { class: "muted" }, "Pycoins")),
+        (() => { const np = nextPrize(s.xp); return h("div", { class: "tp-card" }, h("div", { class: "tp-n" }, np ? `${np.n} pts` : "¡Todos!"), h("div", { class: "muted" }, np ? `para ${np.name}` : "premios individuales al alcance")); })(),
         h("div", { class: "tp-card" }, h("div", { class: "tp-n" }, s.alertas), h("div", { class: "muted" }, "alertas")),
         h("div", { class: "tp-card" }, h("div", { class: "tp-n" }, ago(s.ultimo)), h("div", { class: "muted" }, "último acceso")))),
     h("section", { class: "card" },
@@ -324,11 +344,11 @@ function prizesTab() {
   const list = data.redeems.filter((r) => inGroup(studentByEmail(r.email) || { grupo: "" }));
   return h("section", { class: "card" },
     h("h2", {}, "🎁 Canjes de premios"),
-    h("p", { class: "muted" }, "Los premios y sus costos se editan en la pestaña \"Premios\" de la hoja de cálculo."),
+    h("p", { class: "muted" }, "Los premios y sus puntos se editan en la pestaña \"Premios\" de la hoja de cálculo. Revisa las misiones y los requisitos antes de entregar el vale \"competente\"."),
     list.length ? h("div", { class: "table-wrap" }, h("table", {},
-      h("thead", {}, h("tr", {}, h("th", {}, "Fecha"), h("th", {}, "Estudiante"), h("th", {}, "Premio"), h("th", {}, "Costo"), h("th", {}, "Estado"), h("th", {}, ""))),
+      h("thead", {}, h("tr", {}, h("th", {}, "Fecha"), h("th", {}, "Estudiante"), h("th", {}, "Premio"), h("th", {}, "Puntos"), h("th", {}, "Para revisar"), h("th", {}, "Estado"), h("th", {}, ""))),
       h("tbody", {}, list.map((c) => h("tr", {},
-        h("td", {}, fmt(c.fecha)), h("td", {}, c.nombre || c.email), h("td", {}, c.premio), h("td", {}, `🪙 ${c.costo}`), h("td", {}, c.estado === "entregado" ? "✅ entregado" : "⏳ pendiente"),
+        h("td", {}, fmt(c.fecha)), h("td", {}, c.nombre || c.email), h("td", {}, c.premio), h("td", {}, `${c.costo} pts`), h("td", { class: "muted" }, c.detalle || "—"), h("td", {}, c.estado === "entregado" ? "✅ entregado" : "⏳ pendiente"),
         h("td", {}, h("button", { class: c.estado === "entregado" ? "btn ghost" : "btn primary", onclick: (e) => { e.target.disabled = true; act("redeemStatus", { row: c.fila, estado: c.estado === "entregado" ? "pendiente" : "entregado" }, c.estado === "entregado" ? "Marcado como pendiente" : "Marcado como entregado ✅"); } },
           c.estado === "entregado" ? "Deshacer" : "Marcar entregado"))))))) :
       h("p", { class: "muted" }, "Aún no hay canjes."));
