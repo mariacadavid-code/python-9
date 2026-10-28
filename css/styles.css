@@ -257,3 +257,35 @@ body.blackout #app, body.blackout #exam-root { filter: blur(18px); }
   .xpbar { width: 100px; }
   h1 { font-size: 1.4rem; }
 }
+
+/* ---------- Panel docente ---------- */
+.select { font: 600 0.95rem Nunito, sans-serif; color: var(--ink); background: var(--card); border: 2px solid var(--line); border-radius: 999px; padding: 7px 14px; max-width: 100%; }
+.select:focus, .text-input:focus { outline: none; border-color: var(--brand); }
+.big-select { width: 100%; margin-top: 8px; border-radius: 12px; padding: 10px 12px; }
+.text-input { font: 600 1rem Nunito, sans-serif; color: var(--ink); background: var(--bg); border: 2px solid var(--line); border-radius: 12px; padding: 8px 12px; min-width: 200px; -webkit-user-select: text; user-select: text; }
+.tp-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.tp-head h1, .tp-head h2 { margin: 0.2em 0; }
+.tp-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+.tp-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; text-align: center; }
+.tp-n { font-weight: 800; font-size: 1.35rem; }
+.tp-table th, .tp-table td { white-space: nowrap; }
+.tp-table a { font-weight: 700; text-decoration: none; }
+td.pc { text-align: center; font-weight: 800; min-width: 62px; border-radius: 8px; }
+.pc-0 { color: var(--muted); }
+.pc-read { background: var(--brand-soft); }
+.pc-low { background: var(--bad-soft); color: var(--bad); }
+.pc-mid { background: var(--warn-soft); }
+.pc-done { background: var(--ok-soft); color: var(--ok); }
+.pc-star { font-size: 0.75rem; }
+.warn-cell { color: var(--bad); font-weight: 700; }
+.legend { font-size: 0.85rem; }
+.tp-student-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+.tp-level { margin: 10px 0; }
+.chip.fail { background: var(--bad-soft); border-color: var(--bad); }
+ul.plain { list-style: none; padding: 0; margin: 8px 0; }
+ul.plain li { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.group-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mini-btn { padding: 2px 12px; font-size: 0.85rem; margin-left: 8px; }
+.nav-link.teacher-link { background: var(--accent); color: #1f1a3d; }
+.switch { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.9rem; cursor: pointer; }
+.switch input { width: 18px; height: 18px; accent-color: var(--brand); }

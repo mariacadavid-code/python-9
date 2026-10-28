@@ -6,6 +6,7 @@ import * as sup from "./supervisor.js";
 import { MISSIONS } from "./missions/index.js";
 import { TYPE_INFO, prepare, render, solutionText, editor } from "./exercises.js";
 import { openExam } from "./exam.js";
+import { renderTeacher } from "./teacher.js";
 import { runPython, warmup } from "./py.js";
 
 const app = document.getElementById("app");
@@ -84,14 +85,34 @@ async function startSession(user) {
   S.state = Object.assign(defaultState(), data.state || {});
   prizes = data.prizes || [];
   isTeacher = !!data.isTeacher;
-  sup.start(user, reportEvent);
+  // Los docentes pueden recorrer todo el curso sin que quede registrado como progreso ni supervisión.
+  S.isTeacher = isTeacher;
+  S.noSync = isTeacher;
+  if (!isTeacher) sup.start(user, reportEvent);
   warmup().catch(() => toast("No se pudo cargar Python. Revisa tu conexión a internet.", "error", 8000));
   renderTopbar();
   document.addEventListener("state-changed", renderTopbar);
   window.addEventListener("hashchange", route);
   window.addEventListener("pagehide", () => flush());
+  if (isTeacher && !location.hash.replace("#", "").replace("/", "")) location.hash = "#/profe";
   route();
+  if (!isTeacher && !data.group && data.groups?.length) askGroup(data.groups);
   if (S.state.pendingExam && data.exams?.[S.state.pendingExam.id]?.estado === "bloqueado") openExam();
+}
+
+// El estudiante elige su grupo la primera vez; después solo la profe puede cambiarlo.
+function askGroup(groups) {
+  const sel = h("select", { class: "select big-select" }, h("option", { value: "" }, "Elige tu grupo…"), groups.map((g) => h("option", { value: g }, `Grupo ${g}`)));
+  const err = h("p", { class: "error" });
+  modal({
+    title: "¿De qué grupo eres? 🏫",
+    body: h("div", {}, h("p", {}, "Elige tu grupo para que tu profe vea tu progreso en el lugar correcto. Solo lo eliges una vez."), sel, err),
+    dismissable: false,
+    actions: [{ label: "Guardar", kind: "primary", onclick: () => {
+      if (!sel.value) { err.textContent = "Elige un grupo para seguir."; return false; }
+      api.call("setGroup", { group: sel.value }).then(() => toast(`¡Listo! Eres del grupo ${sel.value} 🎉`, "win")).catch((e) => toast(e.message, "error"));
+    } }],
+  });
 }
 
 function reportEvent(ev) {
@@ -107,7 +128,18 @@ function findExercise(id) {
 }
 function levelSolved(level) { return level.exercises.filter((e) => S.state.solved[e.id]).length; }
 function levelNeeded(level) { return Math.ceil(CFG.PASS_RATIO * level.exercises.length); }
+// Modo docente: todo abierto para poder recorrer el curso. Se puede apagar para ver lo que ve un estudiante.
+const OPEN_KEY = "py9-teacher-open";
+function teacherOpen() {
+  if (!isTeacher) return false;
+  try { return localStorage.getItem(OPEN_KEY) !== "0"; } catch { return true; }
+}
+function setTeacherOpen(on) {
+  try { localStorage.setItem(OPEN_KEY, on ? "1" : "0"); } catch {}
+  route();
+}
 function levelUnlocked(m, idx) {
+  if (teacherOpen()) return true;
   if (!S.state.read["m" + m.id]) return false;
   for (let i = 1; i <= idx; i++) if (levelSolved(m.levels[i - 1]) < levelNeeded(m.levels[i - 1])) return false;
   return true;
@@ -122,6 +154,7 @@ function missionStats(m) {
 }
 function missionUnlocked(m) {
   if (m.soon) return false;
+  if (teacherOpen()) return true;
   const prev = MISSIONS.find((x) => x.id === m.id - 1);
   return !prev || (!prev.soon && missionStats(prev).pct >= 80);
 }
@@ -139,7 +172,7 @@ function nextExercise(m) {
 
 function maybeCheckpoint(m) {
   const st = S.state;
-  if (st.pendingExam) return;
+  if (isTeacher || st.pendingExam) return;
   const stats = missionStats(m);
   const final = stats.done === stats.total && !st.exams[`final-m${m.id}`];
   const cp = st.solvedCount > 0 && st.solvedCount % CFG.CHECKPOINT_EVERY === 0 && !st.exams[`cp-${st.solvedCount}`];
@@ -165,10 +198,15 @@ function renderTopbar() {
   bar.replaceChildren(
     h("a", { href: "#/", class: "brand" }, h("span", { class: "logo" }, "🐍"), h("span", {}, "Python 9°")),
     h("nav", {},
-      link("#/", "🏠 Inicio"),
+      isTeacher && link("#/profe", "🧑‍🏫 Panel docente", "teacher-link"),
+      link("#/", isTeacher ? "🗺️ Curso" : "🏠 Inicio"),
       link("#/lab", labUnlocked() ? "💻 Laboratorio" : "🔒 Laboratorio"),
-      link("#/premios", "🎁 Premios"),
-      isTeacher && link("#/profe", "🧑‍🏫 Panel docente")),
+      !isTeacher && link("#/premios", "🎁 Premios")),
+    isTeacher ? h("div", { class: "me" },
+      h("label", { class: "switch", title: "Con el modo abierto puedes entrar a cualquier misión y nivel sin desbloquear nada. Apágalo para ver el curso como lo ve un estudiante." },
+        h("input", { type: "checkbox", checked: teacherOpen(), onchange: (e) => setTeacherOpen(e.target.checked) }),
+        h("span", {}, "🔓 Todo abierto")),
+      h("span", { class: "pill", title: "Tu avance y tus intentos no se guardan ni se mezclan con los de los estudiantes." }, "Modo docente")) :
     h("div", { class: "me" },
       h("div", { class: "rank", title: r.next ? `Siguiente rango: ${r.next.name} (${r.next.min} XP)` : "¡Rango máximo!" },
         h("span", { class: "rank-emoji" }, r.emoji),
@@ -188,7 +226,7 @@ function route() {
   if (parts[0] === "ex") return viewExercise(parts[1]);
   if (parts[0] === "lab") return viewLab();
   if (parts[0] === "premios") return viewPrizes();
-  if (parts[0] === "profe" && isTeacher) return viewTeacher();
+  if (parts[0] === "profe" && isTeacher) return renderTeacher(mount, parts.slice(1));
   return viewHome();
 }
 
@@ -243,7 +281,7 @@ function missionCard(m) {
 function viewMission(id, tab) {
   const m = MISSIONS.find((x) => x.id === id);
   if (!m || !missionUnlocked(m)) return viewHome();
-  const read = S.state.read["m" + m.id];
+  const read = S.state.read["m" + m.id] || teacherOpen();
   const tabs = h("div", { class: "tabs" },
     h("a", { href: `#/m/${m.id}`, class: tab === "dossier" ? "active" : "" }, "📚 Dossier"),
     h("a", { href: `#/m/${m.id}/ejercicios`, class: tab === "ejercicios" ? "active" : "" }, read ? "🏋️ Ejercicios" : "🔒 Ejercicios"));
@@ -474,42 +512,6 @@ function redeem(p) {
       } },
     ],
   });
-}
-
-// ---------- Panel docente ----------
-async function viewTeacher() {
-  mount(h("p", { class: "center loading" }, "Cargando panel…"));
-  let d;
-  try { d = await api.call("teacherOverview"); } catch (e) { mount(h("p", { class: "error" }, e.message)); return; }
-  const fmt = (s) => (s ? new Date(s).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" }) : "—");
-  const locked = d.exams.filter((x) => x.estado === "bloqueado");
-  const table = (cols, rows) => h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, cols.map((c) => h("th", {}, c)))), h("tbody", {}, rows)));
-  mount(
-    h("h1", {}, "🧑‍🏫 Panel docente"),
-    api.isDemo() && h("p", { class: "banner" }, "Modo demo: aquí solo aparece lo que se hizo en este navegador. Con el Apps Script conectado verás a todo el curso."),
-    h("section", { class: "card" },
-      h("h2", {}, `🔒 Exámenes bloqueados (${locked.length})`),
-      locked.length ? table(["Estudiante", "Examen", "Motivo", "Intento", ""], locked.map((x) => h("tr", {},
-        h("td", {}, x.nombre || x.email), h("td", {}, x.examen), h("td", {}, String(x.motivo || "").replace(/_/g, " ")), h("td", {}, x.intento),
-        h("td", {}, h("button", { class: "btn primary", onclick: async (e) => {
-          e.target.disabled = true;
-          await api.call("unlock", { email: x.email, examId: x.examen });
-          toast("Examen habilitado ✅", "win");
-          viewTeacher();
-        } }, "Habilitar"))))) : h("p", { class: "muted" }, "Nadie tiene exámenes bloqueados. 👌")),
-    h("section", { class: "card" },
-      h("h2", {}, `👩‍🎓 Estudiantes (${d.students.length})`),
-      table(["Estudiante", "XP", "Resueltos", "Alertas", "Último acceso"], d.students.sort((a, b) => b.xp - a.xp).map((s) => h("tr", {},
-        h("td", {}, s.nombre || s.email), h("td", {}, s.xp), h("td", {}, s.resueltos), h("td", {}, s.alertas), h("td", {}, fmt(s.ultimo)))))),
-    h("section", { class: "card" },
-      h("h2", {}, "🚨 Eventos recientes"),
-      table(["Hora", "Estudiante", "Modo", "Evento", "Detalle"], d.events.map((e) => h("tr", { class: e.grave ? "grave" : "" },
-        h("td", {}, fmt(e.fecha)), h("td", {}, e.nombre || e.email), h("td", {}, e.modo), h("td", {}, String(e.tipo).replace(/_/g, " ")), h("td", {}, e.detalle))))),
-    h("section", { class: "card" },
-      h("h2", {}, "🎁 Canjes"),
-      d.redeems.length ? table(["Fecha", "Estudiante", "Premio", "Costo", "Estado"], d.redeems.map((c) => h("tr", {},
-        h("td", {}, fmt(c.fecha)), h("td", {}, c.nombre || c.email), h("td", {}, c.premio), h("td", {}, c.costo), h("td", {}, c.estado)))) : h("p", { class: "muted" }, "Aún no hay canjes.")),
-  );
 }
 
 // ============================ Arranque ============================

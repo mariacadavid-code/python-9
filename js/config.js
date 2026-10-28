@@ -23,3 +23,8 @@ window.APP_CONFIG = {
   // Capa anti-fotos (patrón en movimiento). Ponerlo en false si molesta a alguien.
   MOIRE: true,
 };
+
+// Solo en este computador: abrir con ?demo para probar sin conectarse al Apps Script.
+if (["localhost", "127.0.0.1"].includes(location.hostname) && new URLSearchParams(location.search).has("demo")) {
+  window.APP_CONFIG.API_URL = "";
+}

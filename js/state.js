@@ -52,6 +52,7 @@ export async function flush() {
   clearTimeout(saveTimer);
   const logs = pendingLog;
   pendingLog = [];
+  if (S.noSync) return; // los docentes no guardan progreso
   try {
     await call("save", { state: S.state, logs });
   } catch (e) {

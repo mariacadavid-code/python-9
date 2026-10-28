@@ -58,11 +58,15 @@ function demo(action, p) {
   d.exams ??= {};
   d.events ??= [];
   d.redeems ??= [];
+  d.groups ??= ["9A"];
   const me = demoUser;
+  const isT = CFG.TEACHERS.includes(me.email);
   const examKey = (id) => `${me.email}::${id}`;
   let out = null;
+  const needTeacher = () => { if (!isT) throw new Error("Solo para docentes"); };
   switch (action) {
     case "login": {
+      if (isT) { out = { state: null, exams: {}, prizes: DEFAULT_PRIZES, isTeacher: true, groups: d.groups, group: "" }; break; }
       const s = (d.students[me.email] ??= { name: me.name, state: null });
       s.name = me.name;
       s.last = new Date().toISOString();
@@ -73,13 +77,22 @@ function demo(action, p) {
           ex.motivo = "Cerró o recargó la página durante el examen";
         }
       }
-      out = { state: s.state, exams: myExams(d, me.email), prizes: DEFAULT_PRIZES, isTeacher: CFG.TEACHERS.includes(me.email) };
+      out = { state: s.state, exams: myExams(d, me.email), prizes: DEFAULT_PRIZES, isTeacher: false, groups: d.groups, group: s.group || "" };
+      break;
+    }
+    case "setGroup": {
+      const s = d.students[me.email];
+      if (!d.groups.includes(p.group)) throw new Error("Ese grupo no existe.");
+      if (s.group) throw new Error("Tu grupo ya está asignado. Pídele a tu profe que te lo cambie.");
+      s.group = p.group;
       break;
     }
     case "save":
+      if (isT) break;
       (d.students[me.email] ??= { name: me.name }).state = p.state;
       break;
     case "event":
+      if (isT) break;
       d.events.unshift({ fecha: new Date().toISOString(), email: me.email, nombre: me.name, ...p.event });
       d.events = d.events.slice(0, 300);
       if (p.event.modo === "examen" && p.event.grave && p.event.examId) {
@@ -110,19 +123,52 @@ function demo(action, p) {
       d.redeems.unshift({ fecha: new Date().toISOString(), email: me.email, nombre: me.name, premio: p.prize.premio, costo: p.prize.costo, estado: "pendiente" });
       break;
     case "teacherOverview":
-      if (!CFG.TEACHERS.includes(me.email)) throw new Error("Solo para docentes");
+      needTeacher();
       out = {
-        students: Object.entries(d.students).map(([email, s]) => ({
-          email, nombre: s.name, xp: s.state?.xp || 0, resueltos: s.state?.solvedCount || 0, ultimo: s.last,
-          alertas: d.events.filter((e) => e.email === email).length,
-        })),
-        exams: Object.entries(d.exams).map(([k, ex]) => ({ email: k.split("::")[0], examen: k.split("::")[1], ...ex })),
-        events: d.events.slice(0, 60),
-        redeems: d.redeems,
+        groups: d.groups,
+        students: Object.entries(d.students).filter(([email]) => !CFG.TEACHERS.includes(email)).map(([email, s]) => {
+          const st = s.state || {};
+          const solved = {};
+          for (const [id, v] of Object.entries(st.solved || {})) solved[id] = (v.firstTry ? 1 : 0) + (v.usedHint ? 2 : 0);
+          return {
+            email, nombre: s.name, grupo: s.group || "", xp: st.xp || 0, coins: st.coins || 0, resueltos: st.solvedCount || 0, ultimo: s.last,
+            alertas: d.events.filter((e) => e.email === email).length,
+            badges: st.badges || [], solved, fails: st.fails || {}, read: st.read || {}, exams: st.exams || {}, pendingExam: st.pendingExam?.id || "",
+          };
+        }),
+        exams: Object.entries(d.exams).map(([k, ex]) => ({ email: k.split("::")[0], nombre: d.students[k.split("::")[0]]?.name, examen: k.split("::")[1], ...ex })),
+        events: d.events.slice(0, 250),
+        redeems: d.redeems.map((r, i) => ({ fila: i, ...r })),
       };
       break;
+    case "teacherSetGroup": {
+      needTeacher();
+      if (p.group && !d.groups.includes(p.group)) throw new Error("Ese grupo no existe.");
+      if (!d.students[p.email]) throw new Error("Estudiante no encontrado");
+      d.students[p.email].group = p.group || "";
+      break;
+    }
+    case "groupCreate":
+      needTeacher();
+      if (!p.name || p.name.length > 20) throw new Error("El nombre del grupo debe tener entre 1 y 20 caracteres.");
+      if (!d.groups.includes(p.name)) d.groups.push(p.name);
+      break;
+    case "groupRename":
+      needTeacher();
+      if (d.groups.includes(p.newName)) throw new Error("Ya existe un grupo con ese nombre.");
+      d.groups = d.groups.map((g) => (g === p.name ? p.newName : g));
+      for (const s of Object.values(d.students)) if (s.group === p.name) s.group = p.newName;
+      break;
+    case "groupArchive":
+      needTeacher();
+      d.groups = d.groups.filter((g) => g !== p.name);
+      break;
+    case "redeemStatus":
+      needTeacher();
+      if (d.redeems[p.row]) d.redeems[p.row].estado = p.estado;
+      break;
     case "unlock": {
-      if (!CFG.TEACHERS.includes(me.email)) throw new Error("Solo para docentes");
+      needTeacher();
       const ex = d.exams[`${p.email}::${p.examId}`];
       if (ex) { ex.estado = "habilitado"; ex.motivo = ""; }
       break;
