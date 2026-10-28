@@ -7,6 +7,7 @@ import { MISSIONS } from "./missions/index.js";
 import { TYPE_INFO, prepare, render, solutionText, editor } from "./exercises.js";
 import { openExam } from "./exam.js";
 import { renderTeacher } from "./teacher.js";
+import { initA11y, listenButton, plainText, stopSpeaking } from "./a11y.js";
 import { runPython, warmup } from "./py.js";
 
 const app = document.getElementById("app");
@@ -221,6 +222,7 @@ function renderTopbar() {
 function route() {
   const parts = location.hash.replace(/^#\/?/, "").split("/");
   window.scrollTo(0, 0);
+  stopSpeaking();
   renderTopbar();
   if (parts[0] === "m") return viewMission(Number(parts[1]), parts[2] || "dossier");
   if (parts[0] === "ex") return viewExercise(parts[1]);
@@ -310,6 +312,7 @@ function dossierView(m) {
     m.dossier.map((sec, i) => h("section", { class: "card dossier-sec" },
       h("div", { class: "sec-num" }, `${i + 1}/${m.dossier.length}`),
       h("h2", {}, sec.title),
+      listenButton(() => `${sec.title}. ${plainText(sec.body)} ${plainText(sec.after)}`),
       h("div", { class: "nosel", html: sec.body }),
       sec.example && runnable(sec.example),
       sec.after && h("div", { class: "nosel", html: sec.after }),
@@ -372,7 +375,7 @@ function goalsStrip(m, levelIdx, ex) {
   const route = routeMissions();
   const done = route.filter(missionDone).length;
   const dots = h("div", { class: "dots", "aria-label": `Ejercicio ${idx + 1} de ${l.exercises.length}` },
-    l.exercises.map((e, i) => h("span", { class: `dot ${S.state.solved[e.id] ? "ok" : ""} ${i === idx ? "now" : ""}`, title: `${i + 1}. ${e.title}` })));
+    l.exercises.map((e, i) => h("a", { href: `#/ex/${e.id}`, class: `dot ${S.state.solved[e.id] ? "ok" : ""} ${i === idx ? "now" : ""}`, title: `${i + 1}. ${e.title} (haz clic para ir)`, "aria-label": `Ejercicio ${i + 1}: ${e.title}` })));
   return h("div", { class: "goals" },
     h("div", { class: "goal now" },
       h("div", { class: "goal-label" }, "🎯 Ahora"),
@@ -428,13 +431,48 @@ async function viewExercise(id) {
   const body = h("div", {}, h("p", { class: "center loading" }, "Preparando tu variante… 🐍"));
   const feedback = h("div", { class: "feedback", hidden: true });
   const checkBtn = h("button", { class: "btn primary big", disabled: true }, "Comprobar ✔");
-  const hintBtn = h("button", { class: "btn ghost", onclick: () => {
+  let inst = null;
+
+  // Pistas por escalones: primero una pregunta, luego una ayudita y al final un ejemplo parecido ya resuelto.
+  const GUIDE = {
+    predict: "Recorre el programa línea por línea, como si fueras Python. Después de cada línea, ¿qué valor tiene cada variable?",
+    fill: "Mira la salida esperada. ¿Qué te dice sobre lo que falta en el hueco?",
+    parsons: "¿Qué línea tiene que ir primero? Recuerda: una variable se crea antes de usarla.",
+    bug: "Compara lo que imprime tu programa con la salida esperada. ¿En qué línea empieza la diferencia?",
+    code: "Divide el problema en pasos pequeños: ¿qué datos tienes? ¿qué tienes que mostrar? Escribe primero un paso.",
+  };
+  let hintStep = 0;
+  const hintBox = h("div", { class: "hint-box", "aria-live": "polite" });
+  const hintBtn = h("button", { class: "btn ghost", onclick: async () => {
     usedHint = true;
     hintBtn.disabled = true;
-    feedback.hidden = false;
-    feedback.className = "feedback hint";
-    feedback.replaceChildren(h("strong", {}, "💡 Pista: "), h("span", {}, ex.hint));
-  } }, "💡 Pista");
+    if (hintStep === 0) {
+      hintBox.append(h("div", { class: "hint-step" }, h("strong", {}, "🧭 Pista 1 de 3 · Una pregunta para pensar"), GUIDE[ex.type]));
+    } else if (hintStep === 1) {
+      hintBox.append(h("div", { class: "hint-step" }, h("strong", {}, "💡 Pista 2 de 3 · Una ayudita"), ex.hint || "Relee el enunciado con calma."));
+    } else {
+      let other, k = 0;
+      do { other = await prepare(ex, seedFrom(S.user.email, ex.id, "ejemplo", variant, k)); k++; } while (k < 5 && JSON.stringify(other.data) === JSON.stringify(inst?.data));
+      hintBox.append(h("div", { class: "hint-step" },
+        h("strong", {}, "📖 Pista 3 de 3 · Así se resolvió un ejemplo parecido (con otros datos)"),
+        h("pre", { class: "console nosel" }, solutionText(other)),
+        h("span", { class: "muted" }, "Ahora haz el tuyo, que tiene datos distintos. ¡Tú puedes!")));
+    }
+    hintStep++;
+    if (hintStep < 3) { hintBtn.disabled = false; hintBtn.textContent = `💡 Otra pista (${hintStep + 1} de 3)`; } else hintBtn.textContent = "💡 No hay más pistas";
+  } }, "💡 Pista (1 de 3)");
+
+  const listenBtn = listenButton(() => [ex.title, info.ask, plainText(inst?.data?.prompt)].filter(Boolean).join(". "));
+
+  // "Necesito ayuda": le avisa a la profe sin que el estudiante tenga que levantar la mano.
+  let helpSent = 0;
+  const helpBtn = h("button", { class: "btn ghost help-btn", onclick: () => {
+    if (Date.now() - helpSent < 60000) return toast("Ya le avisaste a tu profe. ¡Lo verá en su panel! 🙋");
+    helpSent = Date.now();
+    api.call("event", { event: { modo: "practica", tipo: "pide_ayuda", detalle: `${m.title} · ${ex.title}`, grave: false, examId: "" } })
+      .then(() => toast("🙋 Le avisé a tu profe. Mientras llega, prueba una pista.", "win", 5000))
+      .catch(() => toast("No pude avisarle ahora. Levanta la mano 🙋", "warn"));
+  } }, "🙋 Necesito ayuda");
 
   const goals = h("div", {}, goalsStrip(m, levelIdx, ex));
   const paintGoals = () => goals.replaceChildren(goalsStrip(m, levelIdx, ex));
@@ -450,9 +488,10 @@ async function viewExercise(id) {
       h("p", { class: "ask" }, info.ask),
       body,
       feedback,
-      h("div", { class: "row" }, checkBtn, ex.hint && hintBtn)));
+      h("div", { class: "row" }, checkBtn, hintBtn, listenBtn, helpBtn),
+      hintBox));
 
-  const inst = await prepare(ex, seedFrom(S.user.email, ex.id, variant));
+  inst = await prepare(ex, seedFrom(S.user.email, ex.id, variant));
   const view = render(inst);
   body.replaceChildren(view.el);
   checkBtn.disabled = false;
@@ -486,7 +525,8 @@ async function viewExercise(id) {
     }
     const fails = wasSolved ? attempts : markFail(ex);
     feedback.className = "feedback bad";
-    feedback.replaceChildren(h("strong", {}, res.msg), res.out != null && h("pre", { class: "console" }, res.out));
+    const cheers = ["Equivocarse es parte de aprender 💪", "¡Casi! Respira y vuelve a mirar el enunciado 👀", "Cada intento te acerca más 🚀"];
+    feedback.replaceChildren(h("strong", {}, res.msg), res.out != null && h("pre", { class: "console" }, res.out), h("div", { class: "cheer" }, cheers[(attempts - 1) % cheers.length]));
     checkBtn.disabled = false;
     // Cada 2 fallos: se muestra la solución y llega una variante nueva para practicar de verdad.
     if (fails % 2 === 0) {
@@ -495,7 +535,10 @@ async function viewExercise(id) {
         body: h("div", {},
           h("p", {}, "Te muestro la respuesta de esta versión. Léela con calma y luego intenta una nueva:"),
           h("pre", { class: "console nosel" }, solutionText(inst))),
-        actions: [{ label: "Entendido, ¡dame otra!", kind: "primary", onclick: () => { st.variant[ex.id] = (st.variant[ex.id] || 0) + 1; save(); viewExercise(ex.id); } }],
+        actions: [
+          { label: "🙋 Pedir ayuda a mi profe", kind: "ghost", onclick: () => { helpBtn.click(); return false; } },
+          { label: "Entendido, ¡dame otra!", kind: "primary", onclick: () => { st.variant[ex.id] = (st.variant[ex.id] || 0) + 1; save(); viewExercise(ex.id); } },
+        ],
         dismissable: false,
       });
     }
@@ -586,4 +629,5 @@ function redeem(p) {
 }
 
 // ============================ Arranque ============================
+initA11y();
 showLogin();

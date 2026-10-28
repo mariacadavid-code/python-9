@@ -20,6 +20,16 @@ const getGroup = () => { try { return localStorage.getItem(GROUP_KEY) || ALL; } 
 const setGroup = (g) => { try { localStorage.setItem(GROUP_KEY, g); } catch {} };
 
 const playable = () => MISSIONS.filter((m) => !m.soon);
+
+const HANDLED_KEY = "py9-help-handled";
+const helpKey = (e) => `${e.email}|${e.fecha}`;
+const handled = () => { try { return new Set(JSON.parse(localStorage.getItem(HANDLED_KEY) || "[]")); } catch { return new Set(); } };
+const markHandled = (e) => { const s = handled(); s.add(helpKey(e)); try { localStorage.setItem(HANDLED_KEY, JSON.stringify([...s].slice(-300))); } catch {} };
+// Solicitudes "🙋 Necesito ayuda" de las últimas 24 horas que todavía no se han atendido.
+const helpRequests = () => {
+  const done = handled();
+  return (data?.events || []).filter((e) => e.tipo === "pide_ayuda" && !done.has(helpKey(e)) && Date.now() - new Date(e.fecha).getTime() < 864e5 && inGroup(studentByEmail(e.email) || { grupo: "" }));
+};
 const levelIcon = (l) => l.icon || TYPE_INFO[l.type].icon;
 const levelName = (l) => l.name || TYPE_INFO[l.type].name;
 
@@ -132,6 +142,7 @@ function groupSelect() {
 function header(active) {
   const blocked = data.exams.filter((x) => x.estado === "bloqueado" && inGroup(studentByEmail(x.email) || { grupo: "" })).length;
   const pending = data.redeems.filter((r) => r.estado === "pendiente" && inGroup(studentByEmail(r.email) || { grupo: "" })).length;
+  const helps = helpRequests().length;
   const tab = (id, label) => h("a", { href: `#/profe${id === "progreso" ? "" : "/" + id}`, class: id === active ? "active" : "" }, label);
   return [
     h("div", { class: "tp-head" },
@@ -142,7 +153,7 @@ function header(active) {
     api.isDemo() && h("p", { class: "banner" }, "Modo demo: aquí solo aparece lo que se hizo en este navegador."),
     h("div", { class: "tabs" },
       tab("progreso", "📊 Progreso"),
-      tab("alertas", `🚨 Alertas y exámenes${blocked ? ` (${blocked} 🔒)` : ""}`),
+      tab("alertas", `🚨 Alertas y exámenes${helps ? ` (${helps} 🙋)` : ""}${blocked ? ` (${blocked} 🔒)` : ""}`),
       tab("premios", `🎁 Premios${pending ? ` (${pending})` : ""}`),
       tab("grupos", "👥 Grupos")),
   ];
@@ -189,7 +200,8 @@ function progressTab() {
         ms.map((m) => h("th", { title: m.title }, `${m.emoji} M${m.id}`)),
         h("th", { title: "Ejercicios resueltos" }, "✅"), h("th", { title: "Insignias" }, "🏅"), h("th", {}, "Último acceso"), h("th", { title: "Alertas de supervisión" }, "⚠️"))),
       h("tbody", {}, list.map((s) => h("tr", {},
-        h("td", {}, h("a", { href: `#/profe/e/${encodeURIComponent(s.email)}` }, s.nombre || s.email), s.pendingExam ? h("span", { class: "pill", title: "Tiene un examen pendiente" }, " 📝") : null),
+        h("td", {}, h("a", { href: `#/profe/e/${encodeURIComponent(s.email)}` }, s.nombre || s.email), s.pendingExam ? h("span", { class: "pill", title: "Tiene un examen pendiente" }, " 📝") : null,
+          helpRequests().some((e) => e.email === s.email) ? h("span", { class: "pill", title: "Pidió ayuda" }, " 🙋") : null),
         h("td", {}, s.grupo || "—"),
         h("td", {}, s.xp),
         ms.map((m) => cell(s, m)),
@@ -278,7 +290,15 @@ function alertsTab() {
   const blocked = data.exams.filter((x) => x.estado === "bloqueado" && mine(x.email));
   const events = data.events.filter((e) => mine(e.email) && (eventFilter === "all" || e.grave)).slice(0, 100);
   const pending = myStudents().filter((s) => s.pendingExam);
+  const helps = helpRequests();
   return h("div", {},
+    h("section", { class: "card" },
+      h("h2", {}, `🙋 Piden ayuda (${helps.length})`),
+      helps.length ? h("ul", { class: "plain" }, helps.map((e) => h("li", { class: "group-row" },
+        h("a", { href: `#/profe/e/${encodeURIComponent(e.email)}` }, e.nombre || e.email),
+        h("span", { class: "muted" }, `${e.detalle} · ${ago(e.fecha)}`),
+        h("button", { class: "btn ghost", onclick: () => { markHandled(e); rerender(); } }, "✅ Atendido")))) :
+        h("p", { class: "muted" }, "Nadie ha pedido ayuda. 👌 Cuando un estudiante pulse \"Necesito ayuda\", aparecerá aquí.")),
     h("section", { class: "card" },
       h("h2", {}, `🔒 Exámenes bloqueados (${blocked.length})`),
       blocked.length ? h("div", { class: "table-wrap" }, h("table", {},
