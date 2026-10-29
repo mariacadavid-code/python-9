@@ -57,7 +57,7 @@ let pendingLog = [];
 export function save(log) {
   if (log) pendingLog.push(log);
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(flush, 600);
+  saveTimer = setTimeout(flush, 1500);
   document.dispatchEvent(new CustomEvent("state-changed"));
 }
 export async function flush() {

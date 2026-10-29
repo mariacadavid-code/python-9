@@ -30,12 +30,13 @@ function screen(...children) {
 export async function openExam() {
   const pe = S.state.pendingExam;
   if (!pe) return;
-  screen(h("p", { class: "center" }, "Cargando examen…"));
+  screen(h("p", { class: "center" }, "Cargando examen…"), h("p", { class: "center muted" }, "Si tarda, es porque hay muchos estudiantes conectados. Espera unos segundos."));
   let status;
   try {
     status = await call("examStatus", { examId: pe.id });
   } catch (e) {
-    screen(h("p", {}, "No pudimos consultar el examen: " + e.message), h("button", { class: "btn", onclick: close }, "Volver"));
+    screen(h("p", { class: "center" }, "No pudimos abrir el examen: " + e.message),
+      h("div", { class: "row center" }, h("button", { class: "btn ghost", onclick: close }, "Volver"), h("button", { class: "btn primary", onclick: openExam }, "Reintentar")));
     return;
   }
   if (status.estado === "bloqueado") return lockedScreen(pe, status.motivo);

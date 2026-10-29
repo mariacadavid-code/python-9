@@ -11,12 +11,23 @@ export function setSessionExpiredHandler(fn) { onSessionExpired = fn; }
 export async function call(action, payload = {}) {
   if (isDemo()) return demo(action, payload);
   // text/plain evita la "preflight" CORS que Apps Script no soporta.
-  const res = await fetch(CFG.API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({ action, token, ...payload }),
-  });
-  const j = await res.json();
+  // Si el servidor está saturado (muchos estudiantes a la vez) no se espera para siempre.
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 30000);
+  let j;
+  try {
+    const res = await fetch(CFG.API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action, token, ...payload }),
+      signal: ctl.signal,
+    });
+    j = await res.json();
+  } catch (e) {
+    throw new Error(e.name === "AbortError" ? "El servidor está tardando mucho. Inténtalo de nuevo en un momento." : "No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.");
+  } finally {
+    clearTimeout(timer);
+  }
   if (!j.ok) {
     if (/sesi[oó]n/i.test(j.error)) onSessionExpired();
     throw new Error(j.error || "Error del servidor");
