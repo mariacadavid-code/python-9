@@ -22,6 +22,7 @@ export const BADGES = {
   "sin-pistas": { emoji: "🧠", name: "Sin pistas", desc: "10 ejercicios sin usar pistas" },
   "examen-perfecto": { emoji: "💯", name: "Examen perfecto", desc: "Sacaste todo bien en un examen" },
   "mision-1": { emoji: "🏅", name: "Misión 1", desc: "Completaste Primeros pasos" },
+  "ia-ubicacion": { emoji: "🧭", name: "Ubicación IA", desc: "Hiciste tu prueba de ubicación" },
   "ia-nivel3": { emoji: "🤖", name: "Entrenamiento IA", desc: "Llegaste al nivel 3 en la práctica con IA" },
 };
 
@@ -33,6 +34,16 @@ export function defaultState() {
 }
 
 export const S = { state: defaultState(), user: null };
+
+// Rangos de práctica con IA. Nombres inspirados en la fluidez del agua de un Hontanar; sirven para todas y todos.
+export const PRACTICE_RANKS = [
+  { level: 1, name: "Manantial" },
+  { level: 2, name: "Arroyo" },
+  { level: 3, name: "Río" },
+  { level: 4, name: "Cascada" },
+  { level: 5, name: "Océano" },
+];
+export const practiceRank = (level) => PRACTICE_RANKS[Math.max(1, Math.min(5, level || 1)) - 1];
 
 export function rankFor(xp) {
   let r = RANKS[0];

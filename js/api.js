@@ -171,6 +171,8 @@ function demo(action, p) {
             email, nombre: s.name, grupo: s.group || "", xp: st.xp || 0, coins: st.coins || 0, resueltos: st.solvedCount || 0, ultimo: s.last,
             alertas: d.events.filter((e) => e.email === email).length,
             badges: st.badges || [], solved, fails: st.fails || {}, read: st.read || {}, exams: st.exams || {}, pendingExam: st.pendingExam?.id || "",
+            ia: st.ai ? { nivel: st.ai.level || 1, hechos: st.ai.done || 0, hoy: st.ai.todayXp || 0 } : null,
+            avatar: st.avatar ? { nick: st.avatar.nick || "" } : null,
           };
         }),
         exams: Object.entries(d.exams).map(([k, ex]) => ({ email: k.split("::")[0], nombre: d.students[k.split("::")[0]]?.name, examen: k.split("::")[1], ...ex })),

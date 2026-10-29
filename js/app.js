@@ -1,7 +1,7 @@
 // Aplicación principal: inicio de sesión, rutas y vistas.
 import { CFG, h, toast, modal, decodeJwt, codeBlock, seedFrom, friendlyError } from "./util.js";
 import * as api from "./api.js";
-import { S, defaultState, rankFor, RANKS, BADGES, XP_BY_TYPE, save, flush, markSolved, markFail, award } from "./state.js";
+import { S, defaultState, rankFor, RANKS, BADGES, XP_BY_TYPE, save, flush, markSolved, markFail, award, PRACTICE_RANKS, practiceRank } from "./state.js";
 import * as sup from "./supervisor.js";
 import { MISSIONS } from "./missions/index.js";
 import { TYPE_INFO, prepare, render, solutionText, editor } from "./exercises.js";
@@ -10,6 +10,8 @@ import { renderTeacher } from "./teacher.js";
 import { initA11y, listenButton, plainText, stopSpeaking } from "./a11y.js";
 import { buddy } from "./huellita.js";
 import { aiPanel } from "./ai.js";
+import { viewProfile } from "./profile.js";
+import { avatarSVG, avatarState } from "./avatar.js";
 import { runPython, warmup } from "./py.js";
 
 const app = document.getElementById("app");
@@ -196,7 +198,7 @@ function renderTopbar() {
   const bar = document.getElementById("topbar");
   bar.hidden = false;
   const st = S.state;
-  const r = rankFor(st.xp);
+  const pr = practiceRank(st.ai?.level || 1);
   const link = (href, label, extra = "") => h("a", { href, class: `nav-link ${extra} ${location.hash.startsWith(href) ? "active" : ""}` }, label);
   bar.replaceChildren(
     h("a", { href: "#/", class: "brand", "aria-label": "Ser School · Python 9°" }, h("img", { src: "img/logo-ser-school.png", alt: "Ser School" })),
@@ -204,14 +206,16 @@ function renderTopbar() {
       isTeacher && link("#/profe", "Panel docente", "teacher-link"),
       link("#/", isTeacher ? "Curso" : "Inicio"),
       link("#/lab", labUnlocked() ? "Laboratorio" : "🔒 Laboratorio"),
-      !isTeacher && link("#/premios", "Premios")),
+      !isTeacher && link("#/premios", "Premios"),
+      !isTeacher && link("#/perfil", "Mi perfil")),
     isTeacher ? h("div", { class: "me" },
       h("label", { class: "switch", title: "Con el modo abierto puedes entrar a cualquier misión y nivel sin desbloquear nada. Apágalo para ver el curso como lo ve un estudiante." },
         h("input", { type: "checkbox", checked: teacherOpen(), onchange: (e) => setTeacherOpen(e.target.checked) }),
         h("span", {}, "Todo abierto")),
       h("span", { class: "pill", title: "Tu avance y tus intentos no se guardan ni se mezclan con los de los estudiantes." }, "Modo docente")) :
     h("div", { class: "me" },
-      h("span", { class: "rank-chip", title: r.next ? `Siguiente rango: ${r.next.name} (${r.next.min} puntos)` : "¡Rango máximo!" }, `${r.emoji} ${r.name}`),
+      h("a", { href: "#/perfil", class: "avatar-chip", title: "Mi perfil", "aria-label": "Mi perfil", html: avatarSVG(avatarState(), 36) }),
+      h("span", { class: "rank-chip", title: "Tu rango de práctica con IA" }, `Rango ${pr.name}`),
       h("div", { class: "pts", title: "Tus puntos. Con ellos llegas a los premios." }, h("b", {}, st.xp), " puntos")),
   );
 }
@@ -226,6 +230,7 @@ function route() {
   if (parts[0] === "ex") return viewExercise(parts[1]);
   if (parts[0] === "lab") return viewLab();
   if (parts[0] === "premios") return viewPrizes();
+  if (parts[0] === "perfil" && !isTeacher) return viewProfile(mount);
   if (parts[0] === "profe" && isTeacher) return renderTeacher(mount, parts.slice(1));
   return viewHome();
 }
@@ -670,7 +675,7 @@ async function viewPrizes() {
         h("strong", {}, b.name), h("small", { class: "muted" }, b.desc))))),
     h("section", { class: "card" },
       h("h2", {}, "Rangos"),
-      h("ol", { class: "ranks" }, RANKS.map((x) => h("li", { class: x.name === r.name ? "current" : "" }, `${x.emoji} ${x.name} — desde ${fmtN(x.min)} puntos`)))));
+      h("ol", { class: "ranks" }, PRACTICE_RANKS.map((x) => h("li", { class: x.level === (st.ai?.level || 1) ? "current" : "" }, `${x.name} · nivel ${x.level} de práctica · ${CFG.AI_XP[x.level - 1]} puntos por ejercicio`)))));
 }
 
 function redeem(p) {

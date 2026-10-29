@@ -3,7 +3,7 @@
 import { h, toast, modal } from "./util.js";
 import * as api from "./api.js";
 import { MISSIONS } from "./missions/index.js";
-import { BADGES, rankFor } from "./state.js";
+import { BADGES, rankFor, practiceRank } from "./state.js";
 import { TYPE_INFO } from "./exercises.js";
 
 let data = null;
@@ -236,7 +236,7 @@ function progressTab() {
 function studentView(email) {
   const s = studentByEmail(email);
   if (!s) return h("div", {}, h("a", { href: "#/profe" }, "← Volver"), h("p", { class: "error" }, "No encontré a ese estudiante."));
-  const r = rankFor(s.xp);
+  const r = practiceRank(s.ia?.nivel || 1);
   const exams = Object.entries(s.exams || {});
   const myEvents = data.events.filter((e) => e.email === s.email).slice(0, 15);
   const groupSel = h("select", { class: "select", "aria-label": "Mover de grupo", onchange: (e) => act("teacherSetGroup", { email: s.email, group: e.target.value }, "Estudiante movido ✅") },
@@ -258,10 +258,10 @@ function studentView(email) {
     h("a", { href: "#/profe", class: "crumbs" }, "← Volver al panel"),
     h("section", { class: "card" },
       h("div", { class: "tp-student-head" },
-        h("div", {}, h("h1", {}, s.nombre || s.email), h("div", { class: "muted" }, s.email)),
+        h("div", {}, h("h1", {}, s.nombre || s.email), h("div", { class: "muted" }, s.email + (s.avatar?.nick ? ` · apodo: ${s.avatar.nick}` : ""))),
         h("div", { class: "row" }, h("span", { class: "muted" }, "Grupo:"), groupSel)),
       h("div", { class: "tp-cards" },
-        h("div", { class: "tp-card" }, h("div", { class: "tp-n" }, `${r.emoji} ${r.name}`), h("div", { class: "muted" }, `${s.xp} XP`)),
+        h("div", { class: "tp-card" }, h("div", { class: "tp-n" }, r.name), h("div", { class: "muted" }, `rango de práctica · ${s.xp} puntos`)),
         h("div", { class: "tp-card" }, h("div", { class: "tp-n" }, s.resueltos), h("div", { class: "muted" }, "ejercicios resueltos")),
         s.ia ? h("div", { class: "tp-card" }, h("div", { class: "tp-n" }, `Nivel ${s.ia.nivel}`), h("div", { class: "muted" }, `práctica con IA · ${s.ia.hechos} ejercicios`)) : null,
         (() => { const np = nextPrize(s.xp); return h("div", { class: "tp-card" }, h("div", { class: "tp-n" }, np ? `${np.n} pts` : "¡Todos!"), h("div", { class: "muted" }, np ? `para ${np.name}` : "premios individuales al alcance")); })(),

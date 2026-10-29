@@ -78,7 +78,7 @@ export function initA11y() {
       h("input", { type: "checkbox", checked: prefs[key], onchange: (e) => { prefs[key] = e.target.checked; persist(); apply(); } }),
       h("span", {}, label), extra);
     const size = (label, v, title) => h("button", { type: "button", class: `btn ${prefs.size === v ? "primary" : "ghost"} a11y-size`, title, "aria-pressed": String(prefs.size === v), onclick: () => { prefs.size = v; persist(); apply(); render(); } }, label);
-    root.replaceChildren(
+    const parts = [
       open && h("div", { class: "a11y-panel", role: "dialog", "aria-label": "Ayudas para leer y trabajar mejor" },
         h("h3", {}, "♿ Ayudas para ti"),
         h("div", { class: "a11y-sizes" }, h("span", {}, "Tamaño de letra"), size("A", 1, "Normal"), size("A+", 1.15, "Grande"), size("A++", 1.3, "Muy grande")),
@@ -87,7 +87,8 @@ export function initA11y() {
         opt("Modo calmado (sin movimiento)", "calm"),
         canSpeak() ? h("p", { class: "muted a11y-tip" }, "🔊 En cada ejercicio y en cada ficha hay un botón \"Escuchar\".") : h("p", { class: "muted a11y-tip" }, "Tu navegador no puede leer en voz alta."),
         h("button", { class: "btn ghost", type: "button", onclick: () => { prefs = { ...DEFAULTS }; persist(); apply(); render(); } }, "Volver a lo normal")),
-      h("button", { class: "a11y-fab", type: "button", "aria-expanded": String(open), "aria-label": "Ayudas de accesibilidad", title: "Ayudas para leer y trabajar mejor", onclick: () => { open = !open; render(); } }, open ? "✖" : "♿"));
+      h("button", { class: "a11y-fab", type: "button", "aria-expanded": String(open), "aria-label": "Ayudas de accesibilidad", title: "Ayudas para leer y trabajar mejor", onclick: () => { open = !open; render(); } }, open ? "✖" : "♿")];
+    root.replaceChildren(...parts.filter(Boolean));
   };
   render();
   if (canSpeak()) speechSynthesis.getVoices(); // algunos navegadores cargan las voces de forma diferida

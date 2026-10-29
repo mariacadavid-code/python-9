@@ -22,7 +22,9 @@ window.APP_CONFIG = {
   IDLE_REPORT_SEC: 300,
   // Práctica con IA en el Laboratorio: topes por día para practicar con calma.
   AI_DAILY_EX: 12,
-  AI_DAILY_XP: 150,
+  AI_DAILY_XP: 200,
+  // Puntos por ejercicio según el rango de práctica (niveles 1 a 5).
+  AI_XP: [10, 20, 35, 50, 75],
   // Capa anti-fotos (patrón en movimiento). Ponerlo en false si molesta a alguien.
   MOIRE: true,
 };

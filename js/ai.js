@@ -1,16 +1,17 @@
 // Práctica personalizada del Laboratorio. Los ejercicios se adaptan al nivel del estudiante (1 a 5):
 // vienen de la IA (Gemini, a través del Apps Script) y, si la IA no está disponible, del banco de ejercicios del curso.
 // Cada ejercicio de la IA se verifica con Python real en el navegador antes de mostrarse.
-import { CFG, h, esc, seedFrom, rng, normOut } from "./util.js";
+import { CFG, h, esc, seedFrom, rng, normOut, toast } from "./util.js";
 import * as api from "./api.js";
 import { MISSIONS } from "./missions/index.js";
-import { S, save, award } from "./state.js";
+import { S, save, award, PRACTICE_RANKS, practiceRank } from "./state.js";
+import { avatarSVG, avatarState } from "./avatar.js";
 import { prepare, render, TYPE_INFO } from "./exercises.js";
 import { runPython } from "./py.js";
 import { buddy } from "./huellita.js";
 import { listenButton, plainText } from "./a11y.js";
 
-const NAMES = ["Básico", "Fácil", "Medio", "Retador", "Experto"];
+const NAMES = PRACTICE_RANKS.map((r) => r.name);
 
 // Qué sabe el estudiante según las misiones que ya abrió. La IA solo usa estos temas.
 const TOPICS = {
@@ -114,6 +115,7 @@ export function aiPanel({ celebrate } = {}) {
   const coachEl = h("p", { class: "muted" });
   const limitEl = h("p", { class: "muted", style: { fontSize: "0.85rem" } });
   const stage = h("div", { class: "ai-stage" });
+  const placeEl = h("div", { class: "ai-place" });
   const askBtn = h("button", { class: "btn primary big" }, "Dame un ejercicio");
   let busy = false;
 
@@ -125,7 +127,17 @@ export function aiPanel({ celebrate } = {}) {
       : `Con ${need} acierto${need === 1 ? "" : "s"} seguido${need === 1 ? "" : "s"} sin pistas, subes al nivel ${a.level + 1}.`;
     limitEl.textContent = `Hoy: ${a.todayEx} de ${CFG.AI_DAILY_EX} ejercicios · ${a.todayXp} de ${CFG.AI_DAILY_XP} puntos posibles`;
     askBtn.disabled = busy || a.todayEx >= CFG.AI_DAILY_EX;
+    const pr = practiceRank(a.level);
+    const placedOk = a.placed && !a.placed.skipped;
+    const days = placedOk ? Math.max(0, Math.ceil(7 - (Date.now() - a.placed.at) / 864e5)) : 0;
+    placeEl.replaceChildren(
+      h("div", {}, h("p", { class: "eyebrow" }, "Tu rango"), h("p", { class: "goal-big" }, `${pr.name} · nivel ${a.level}`),
+        h("p", { class: "muted", style: { fontSize: "0.85rem" } }, placedOk ? "Tu ubicación ya está hecha." : "Aún no hiciste tu prueba de ubicación: son 5 preguntas y la IA te pone en tu rango.")),
+      h("button", { class: placedOk ? "btn" : "btn primary", disabled: busy || !canPlace(), onclick: placement },
+        !placedOk ? "Hacer mi prueba de ubicación" : canPlace() ? "Repetir mi ubicación" : `Podrás repetirla en ${days} día${days === 1 ? "" : "s"}`));
   }
+
+  const canPlace = () => S.isTeacher || !a.placed || a.placed.skipped || Date.now() - a.placed.at >= 7 * 864e5;
 
   // 3 aciertos seguidos sin pistas suben de nivel; 3 ejercicios fallidos seguidos lo bajan un paso.
   function register(kind) {
@@ -135,6 +147,7 @@ export function aiPanel({ celebrate } = {}) {
     else { a.ok = 0; a.no++; a.hist.push(0); if (a.no >= 3 && a.level > 1) { a.level--; a.no = 0; } }
     a.hist = a.hist.slice(-10);
     if (a.level >= 3) award("ia-nivel3");
+    if (a.level > (a.max || 1)) { a.max = a.level; toast(`🏅 ¡Nueva medalla de rango: ${practiceRank(a.level).name}!`, "win", 5000); }
     return a.level - before;
   }
 
@@ -178,7 +191,7 @@ export function aiPanel({ celebrate } = {}) {
       if (res.ok) {
         solved = true;
         const firstTry = wrong === 0 && !usedHint;
-        const base = 10 * level + (firstTry ? 5 : 0);
+        const base = (CFG.AI_XP[level - 1] || 10) + (firstTry ? 5 : 0);
         const gain = Math.min(base, Math.max(0, CFG.AI_DAILY_XP - a.todayXp));
         S.state.xp += gain; a.todayXp += gain; a.done++;
         const delta = failedCounted ? 0 : register(firstTry ? "ok" : "help");
@@ -224,11 +237,76 @@ export function aiPanel({ celebrate } = {}) {
     paintMeta();
   }
 
+  // Prueba de ubicación: 5 preguntas que parten del nivel medio. Si acierta sube, si falla baja. El rango queda en el nivel más alto que resolvió.
+  async function placement() {
+    if (busy) return;
+    busy = true;
+    paintMeta();
+    const probe = { level: 3, seen: a.seen };
+    let highest = 0, right = 0;
+    const results = [];
+    for (let i = 1; i <= 5; i++) {
+      huellita.say(`Pregunta ${i} de 5. Sin pistas, a tu ritmo.`, "think");
+      put(stage, h("p", { class: "center loading" }, `Preparando la pregunta ${i} de 5…`));
+      const lvl = probe.level;
+      const r = await fetchExercise(probe);
+      a.seen = probe.seen;
+      const ex = r.fallback ? bankPick(lvl) : r.ex;
+      const inst = await prepare(ex, seedFrom(S.user.email, ex.id, "ub", Date.now() % 100000));
+      const view = render(inst);
+      const ok = await new Promise((resolve) => {
+        let wrong = 0;
+        const feedback = h("div", { class: "feedback", hidden: true });
+        const check = h("button", { class: "btn primary big" }, "Comprobar ✔");
+        const skip = h("button", { class: "btn ghost", onclick: () => resolve(false) }, "No lo sé");
+        check.onclick = async () => {
+          check.disabled = true; check.textContent = "Revisando…";
+          const res = await view.check();
+          check.disabled = false; check.textContent = "Comprobar ✔";
+          if (res.ok) { resolve(wrong <= 1); return; }
+          wrong++;
+          feedback.hidden = false; feedback.className = "feedback bad";
+          put(feedback, h("strong", {}, res.msg), res.out != null && h("pre", { class: "console" }, res.out));
+          if (wrong >= 3) resolve(false);
+        };
+        put(stage,
+          h("div", { class: "row", style: { justifyContent: "space-between" } }, h("span", { class: "tagpill lime" }, `Pregunta ${i} de 5`), h("span", { class: "muted", style: { fontSize: "0.8rem" } }, "Prueba de ubicación · sin pistas")),
+          h("div", { class: "ai-steps" }, Array.from({ length: 5 }, (_, k) => h("i", { class: k < i - 1 ? "ok" : k === i - 1 ? "now" : "" }))),
+          h("h2", {}, ex.title),
+          h("p", { class: "ask" }, r.fallback ? TYPE_INFO[ex.type].ask : "Escribe tu programa. Lo revisamos con pruebas automáticas."),
+          view.el, feedback, h("div", { class: "row" }, check, skip));
+      });
+      results.push(ok);
+      if (ok) { right++; highest = Math.max(highest, lvl); probe.level = Math.min(5, lvl + 1); } else probe.level = Math.max(1, lvl - 1);
+    }
+    // Si falló las dos últimas, ese nivel era su techo: se baja un escalón.
+    if (results.slice(-2).every((x) => !x)) highest = Math.max(1, highest - 1);
+    const placed = Math.max(1, highest);
+    a.level = placed; a.max = Math.max(a.max || 1, placed); a.ok = 0; a.no = 0; a.hist = [];
+    a.placed = { level: placed, at: Date.now() };
+    award("ia-ubicacion");
+    if (placed >= 3) award("ia-nivel3");
+    save();
+    const rank = practiceRank(placed);
+    put(stage, h("div", { class: "placement-result" },
+      h("div", { class: "pr-avatar", html: avatarSVG(avatarState(), 150) }),
+      h("h2", {}, `Tu rango: ${rank.name}`),
+      h("p", {}, `Respondiste bien ${right} de 5. Empiezas en el nivel ${placed} y ganas ${CFG.AI_XP[placed - 1]} puntos por ejercicio. Si lo haces bien, subes.`),
+      h("div", { class: "row", style: { justifyContent: "center" } },
+        h("button", { class: "btn primary", onclick: () => { busy = false; load(); } }, "Empezar a practicar"),
+        h("a", { class: "btn", href: "#/perfil" }, "Ver mi perfil y compartir"))));
+    huellita.say(`¡Listo! Tu rango es ${rank.name}. ¡Qué buen comienzo!`, "cheer", true);
+    celebrate?.();
+    busy = false;
+    paintMeta();
+  }
+
   askBtn.onclick = load;
   paintMeta();
   return h("div", { class: "ai" },
     h("section", { class: "card ai-head" },
       huellita.el,
+      placeEl,
       h("div", { class: "ai-meta" },
         h("div", {}, h("p", { class: "eyebrow" }, "Tu nivel"), scaleEl),
         h("div", {}, h("p", { class: "eyebrow" }, "Últimos 5 ejercicios"), pipsEl, coachEl, limitEl)),
