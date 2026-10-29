@@ -364,7 +364,24 @@ function groupsTab() {
   const nameInput = h("input", { class: "text-input", placeholder: "Nombre del grupo (ej. 9B)", maxlength: "20" });
   const create = () => { const n = nameInput.value.trim(); if (n) act("groupCreate", { name: n }, `Grupo ${n} creado ✅`); };
   nameInput.addEventListener("keydown", (e) => { if (e.key === "Enter") create(); });
+  const roster = h("textarea", { class: "text-input", rows: "6", style: { width: "100%" }, placeholder: "ana.perez@serschool.edu.co Ana Pérez\nluis.gomez@serschool.edu.co Luis Gómez", "aria-label": "Correos de los estudiantes" });
+  const rosterGroup = h("select", { class: "select", "aria-label": "Grupo de la lista" }, h("option", { value: "" }, "Sin grupo"), data.groups.map((g) => h("option", { value: g }, `Grupo ${g}`)));
+  const addRoster = async () => {
+    if (!roster.value.trim()) return;
+    try {
+      const r = await api.call("rosterAdd", { text: roster.value, group: rosterGroup.value });
+      toast(`${r.added} agregados${r.skipped ? `, ${r.skipped} ya estaban` : ""}${r.bad.length ? `, ${r.bad.length} sin leer: ${r.bad.slice(0, 3).join(", ")}` : ""}`, r.bad.length ? "warn" : "win", 5000);
+      roster.value = "";
+      await load();
+      rerender();
+    } catch (e) { toast("No se pudo: " + e.message, "error"); }
+  };
   return h("div", {},
+    h("section", { class: "card" },
+      h("h2", {}, "Lista del curso"),
+      h("p", { class: "muted" }, "Pega los correos del colegio, uno por línea (puedes añadir el nombre después del correo). Los estudiantes aparecen en el panel desde ya, con su grupo, aunque todavía no hayan entrado."),
+      roster,
+      h("div", { class: "row" }, rosterGroup, h("button", { class: "btn primary", onclick: addRoster }, "Agregar a la lista"))),
     h("section", { class: "card" },
       h("h2", {}, "👥 Mis grupos"),
       h("p", { class: "muted" }, "Cada estudiante elige su grupo la primera vez que entra. Aquí puedes crear grupos nuevos, cambiarles el nombre o moverlos de grupo."),

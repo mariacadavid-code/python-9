@@ -188,6 +188,21 @@ function demo(action, p) {
       d.students[p.email].group = p.group || "";
       break;
     }
+    case "rosterAdd": {
+      needTeacher();
+      let added = 0, skipped = 0; const bad = [];
+      for (const line of String(p.text || "").split(/\r?\n/)) {
+        const m = line.trim().match(/^([^\s,;]+@[^\s,;]+)[\s,;]*(.*)$/);
+        if (!m) { if (line.trim()) bad.push(line.trim()); continue; }
+        const email = m[1].toLowerCase();
+        if (!email.endsWith("@serschool.edu.co")) { bad.push(email); continue; }
+        if (d.students[email]) { skipped++; continue; }
+        d.students[email] = { name: m[2].trim() || email.split("@")[0].replace(/[._]+/g, " "), state: null, group: p.group || "" };
+        added++;
+      }
+      out = { added, skipped, bad };
+      break;
+    }
     case "groupCreate":
       needTeacher();
       if (!p.name || p.name.length > 20) throw new Error("El nombre del grupo debe tener entre 1 y 20 caracteres.");
