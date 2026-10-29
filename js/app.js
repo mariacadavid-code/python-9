@@ -13,6 +13,7 @@ import { aiPanel } from "./ai.js";
 import { viewProfile } from "./profile.js";
 import { avatarSVG, avatarState } from "./avatar.js";
 import { runPython, warmup } from "./py.js";
+import { LANDING_HTML } from "./landing.js";
 
 const app = document.getElementById("app");
 const mount = (...nodes) => app.replaceChildren(...nodes.filter((n) => n != null && n !== false));
@@ -30,18 +31,24 @@ function waitForGis(fn) {
 
 function showLogin(error) {
   document.getElementById("topbar").hidden = true;
-  mount(
-    h("section", { class: "login card" },
-      h("img", { src: "img/logo-ser-school.png", alt: "Ser School", style: { height: "72px", margin: "0 auto 8px", display: "block" } }),
-      h("h1", {}, "Python Practicando"),
-      h("p", { class: "muted" }, "Grado 9° · Serschool"),
-      h("p", {}, `Entra con tu correo del colegio (@${CFG.DOMAIN}).`),
-      h("div", { id: "gbtn" }),
-      error && h("p", { class: "error" }, error),
-      isLocalDev() && api.isDemo() && h("div", { class: "dev-login" },
-        h("p", { class: "muted" }, "Modo prueba (solo en este computador):"),
-        h("button", { class: "btn ghost", onclick: () => startSession({ email: "estudiante.prueba@" + CFG.DOMAIN, name: "Estudiante de Prueba" }) }, "Entrar como estudiante"),
-        h("button", { class: "btn ghost", onclick: () => startSession({ email: CFG.TEACHERS[0], name: "Profe (prueba)" }) }, "Entrar como profe"))));
+  app.classList.add("landing-on");
+  const page = h("div", { class: "landing" });
+  page.innerHTML = LANDING_HTML;
+  // Los enlaces de la portada se desplazan dentro de la página sin cambiar la ruta de la aplicación.
+  page.querySelectorAll("[data-go]").forEach((a) => a.addEventListener("click", (e) => {
+    e.preventDefault();
+    page.querySelector("#" + a.dataset.go)?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }));
+  const msg = page.querySelector("#entry-msg");
+  if (error) msg.append(h("p", { class: "error" }, error));
+  if (isLocalDev() && api.isDemo()) {
+    msg.append(h("div", { class: "dev-login" },
+      h("p", { class: "muted" }, "Modo prueba (solo en este computador):"),
+      h("button", { class: "btn ghost", onclick: () => startSession({ email: "estudiante.prueba@" + CFG.DOMAIN, name: "Estudiante de Prueba" }) }, "Entrar como estudiante"),
+      h("button", { class: "btn ghost", onclick: () => startSession({ email: CFG.TEACHERS[0], name: "Profe (prueba)" }) }, "Entrar como profe")));
+  }
+  mount(page);
+  if (error) page.querySelector("#entrar")?.scrollIntoView();
   waitForGis(() => {
     if (!gisReady) {
       google.accounts.id.initialize({ client_id: CFG.CLIENT_ID, callback: onCredential, hd: CFG.DOMAIN, auto_select: true, itp_support: true });
@@ -79,6 +86,7 @@ api.setSessionExpiredHandler(() => {
 async function startSession(user) {
   S.user = user;
   api.setDemoUser(user);
+  app.classList.remove("landing-on");
   mount(h("p", { class: "center loading" }, "Cargando tu progreso… 🐍"));
   let data;
   try {

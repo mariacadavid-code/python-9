@@ -285,3 +285,4 @@ body::before { display: none; }
 .teacher > .tp-head .btn:disabled { opacity: 0.6; }
 .teacher .progress { background: #e4e8ec; border-radius: 99px; }
 img[src*="logo-ser-school"] { mix-blend-mode: multiply; }
+#topbar[hidden] { display: none !important; }
