@@ -8,7 +8,7 @@ import { S, save, award, PRACTICE_RANKS, practiceRank } from "./state.js";
 import { avatarSVG, avatarState } from "./avatar.js";
 import { prepare, render, TYPE_INFO } from "./exercises.js";
 import { runPython } from "./py.js";
-import { buddy } from "./huellita.js";
+import { buddy } from "./honti.js";
 import { listenButton, plainText } from "./a11y.js";
 
 const NAMES = PRACTICE_RANKS.map((r) => r.name);
@@ -109,7 +109,7 @@ const FALLBACK_MSG = {
 
 export function aiPanel({ celebrate } = {}) {
   const a = aiState();
-  const huellita = buddy(`¡Hola! Estás en el nivel ${a.level}. Pide un ejercicio cuando quieras.`, "hi");
+  const honti = buddy(`¡Hola! Estás en el nivel ${a.level}. Pide un ejercicio cuando quieras.`, "hi");
   const scaleEl = h("div", { class: "ai-scale" });
   const pipsEl = h("div", { class: "ai-pips" });
   const coachEl = h("p", { class: "muted" });
@@ -159,8 +159,8 @@ export function aiPanel({ celebrate } = {}) {
     }
     busy = true;
     paintMeta();
-    huellita.say("Déjame pensar un ejercicio a tu medida…", "think");
-    put(stage, h("p", { class: "center loading" }, "Huellita está preparando tu ejercicio…"));
+    honti.say("Déjame pensar un ejercicio a tu medida…", "think");
+    put(stage, h("p", { class: "center loading" }, "Honti está preparando tu ejercicio…"));
     const level = a.level;
     const r = await fetchExercise(a);
     const ex = r.fallback ? bankPick(level) : r.ex;
@@ -177,7 +177,7 @@ export function aiPanel({ celebrate } = {}) {
       usedHint = true; hintBtn.disabled = true;
       feedback.hidden = false; feedback.className = "feedback hint";
       put(feedback, h("strong", {}, "💡 Pista: "), h("span", {}, ex.hint || "Divide el problema en pasos pequeños."));
-      huellita.say("Buena idea pedir una pista. Pensar con ayuda también es aprender.", "think");
+      honti.say("Buena idea pedir una pista. Pensar con ayuda también es aprender.", "think");
     } }, "💡 Pista");
     const nextBtn = h("button", { class: "btn primary", onclick: () => { busy = false; load(); } }, "Siguiente ejercicio ▶");
     const listen = listenButton(() => [ex.title, plainText(inst.data.prompt || TYPE_INFO[ex.type].ask)].join(". "));
@@ -202,14 +202,14 @@ export function aiPanel({ celebrate } = {}) {
           gain === 0 ? h("div", { class: "muted" }, "Ya llegaste al tope de puntos de hoy. Practicar igual te sirve mucho.") : null,
           delta > 0 ? h("div", { class: "cheer" }, `¡Subiste al nivel ${a.level}!`) : null,
           h("div", { class: "row" }, a.todayEx < CFG.AI_DAILY_EX ? nextBtn : h("span", { class: "muted" }, "Ese fue tu último ejercicio de hoy. ¡Mañana seguimos!")));
-        huellita.say(delta > 0 ? `¡Subiste al nivel ${a.level}! Te lo ganaste con práctica.` : "¡Bien hecho! Sigamos con otro.", "cheer", true);
+        honti.say(delta > 0 ? `¡Subiste al nivel ${a.level}! Te lo ganaste con práctica.` : "¡Bien hecho! Sigamos con otro.", "cheer", true);
         celebrate?.();
         checkBtn.disabled = true; hintBtn.disabled = true;
       } else {
         wrong++;
         feedback.className = "feedback bad";
         put(feedback, h("strong", {}, res.msg), res.out != null && h("pre", { class: "console" }, res.out));
-        huellita.say("Sin afán. Mira otra vez y prueba de nuevo.", "hug");
+        honti.say("Sin afán. Mira otra vez y prueba de nuevo.", "hug");
         if (wrong >= 3 && !failedCounted) {
           failedCounted = true;
           const delta = register("fail");
@@ -232,7 +232,7 @@ export function aiPanel({ celebrate } = {}) {
       view.el,
       feedback,
       h("div", { class: "row" }, checkBtn, hintBtn, listen));
-    huellita.say(r.fallback ? "Aquí tienes uno de tu nivel. ¡Vamos!" : "¡Listo! Este lo preparé para ti.", "hi", true);
+    honti.say(r.fallback ? "Aquí tienes uno de tu nivel. ¡Vamos!" : "¡Listo! Este lo preparé para ti.", "hi", true);
     busy = false;
     paintMeta();
   }
@@ -246,7 +246,7 @@ export function aiPanel({ celebrate } = {}) {
     let highest = 0, right = 0;
     const results = [];
     for (let i = 1; i <= 5; i++) {
-      huellita.say(`Pregunta ${i} de 5. Sin pistas, a tu ritmo.`, "think");
+      honti.say(`Pregunta ${i} de 5. Sin pistas, a tu ritmo.`, "think");
       put(stage, h("p", { class: "center loading" }, `Preparando la pregunta ${i} de 5…`));
       const lvl = probe.level;
       const r = await fetchExercise(probe);
@@ -295,7 +295,7 @@ export function aiPanel({ celebrate } = {}) {
       h("div", { class: "row", style: { justifyContent: "center" } },
         h("button", { class: "btn primary", onclick: () => { busy = false; load(); } }, "Empezar a practicar"),
         h("a", { class: "btn", href: "#/perfil" }, "Ver mi perfil y compartir"))));
-    huellita.say(`¡Listo! Tu rango es ${rank.name}. ¡Qué buen comienzo!`, "cheer", true);
+    honti.say(`¡Listo! Tu rango es ${rank.name}. ¡Qué buen comienzo!`, "cheer", true);
     celebrate?.();
     busy = false;
     paintMeta();
@@ -305,7 +305,7 @@ export function aiPanel({ celebrate } = {}) {
   paintMeta();
   return h("div", { class: "ai" },
     h("section", { class: "card ai-head" },
-      huellita.el,
+      honti.el,
       placeEl,
       h("div", { class: "ai-meta" },
         h("div", {}, h("p", { class: "eyebrow" }, "Tu nivel"), scaleEl),
@@ -313,7 +313,7 @@ export function aiPanel({ celebrate } = {}) {
       h("div", { class: "row" }, askBtn)),
     h("section", { class: "card" }, stage),
     h("section", { class: "card" },
-      h("h3", {}, "Cómo decide tu entrenadora"),
+      h("h3", {}, "Cómo te orienta Honti"),
       h("ul", { class: "reqs" },
         h("li", { class: "ok" }, h("span", { class: "ck" }, "↑"), "Sube de nivel con 3 aciertos seguidos sin pistas."),
         h("li", { class: "ok" }, h("span", { class: "ck" }, "↓"), "Baja un paso si 3 ejercicios seguidos se te hacen muy difíciles, para reforzar."),

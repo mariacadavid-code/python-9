@@ -1,7 +1,7 @@
 // Mi perfil: avatar personalizable, medallas destacadas y tarjeta de rango para compartir con amigos.
 import { h, modal, toast } from "./util.js";
 import { S, save, practiceRank, PRACTICE_RANKS } from "./state.js";
-import { avatarSVG, avatarState, COLORS, FACES, ACCESSORIES, isUnlocked, earnedMedals, medalHTML, buildShareCard, shareText } from "./avatar.js";
+import { avatarSVG, avatarState, COLORS, ACCESSORIES, isUnlocked, earnedMedals, medalHTML, buildShareCard, shareText } from "./avatar.js";
 import { CFG } from "./util.js";
 
 const NICK_RE = /^[\p{L}\p{N} ._-]{2,16}$/u;
@@ -89,10 +89,9 @@ export function viewProfile(mount) {
         h("div", { class: "row" }, nick),
         h("div", { class: "row" }, shareBtn))),
     h("section", { class: "card" },
-      h("h2", {}, "Personaliza tu avatar"),
+      h("h2", {}, "Personaliza tu avatar de Honti"),
       h("p", { class: "muted" }, "Cada rango desbloquea piezas nuevas. ¡Sube de rango practicando con la IA!"),
-      group("Color", COLORS, "color"),
-      group("Cara", FACES, "face"),
+      group("Fondo", COLORS, "color"),
       group("Accesorio", ACCESSORIES, "acc")),
     h("section", { class: "card" },
       h("h2", {}, "Mis medallas"),

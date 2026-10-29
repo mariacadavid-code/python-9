@@ -1,4 +1,4 @@
-// Avatares y medallas. El avatar es una Huellita que el estudiante personaliza con piezas que se desbloquean por rango.
+// Avatares y medallas. El avatar es la cabeza de Honti, el perro del colegio, que el estudiante personaliza con fondos y accesorios que se desbloquean por rango.
 // También arma la tarjeta de rango (una imagen) para compartir con amigos: solo muestra apodo, rango y medallas.
 import { S, BADGES, PRACTICE_RANKS, practiceRank } from "./state.js";
 
@@ -9,25 +9,20 @@ export const COLORS = [
   { id: "azul", name: "Azul", body: "#26588A", ink: "#FFFFFF", arcs: "#CCEF3A", rank: 2 },
   { id: "pizarra", name: "Pizarra", body: "#344151", ink: "#FFFFFF", arcs: "#CCEF3A", rank: 3 },
 ];
-export const FACES = [
-  { id: "sonrisa", name: "Sonrisa", rank: 1 },
-  { id: "feliz", name: "Feliz", rank: 1 },
-  { id: "guino", name: "Guiño", rank: 2 },
-  { id: "calma", name: "Calma", rank: 1 },
-];
 export const ACCESSORIES = [
   { id: "ninguno", name: "Nada", rank: 1 },
   { id: "gafas", name: "Gafas", rank: 1 },
   { id: "audifonos", name: "Audífonos", rank: 2 },
-  { id: "gorra", name: "Gorra", rank: 3 },
+  { id: "bufanda", name: "Bufanda", rank: 3 },
   { id: "corona", name: "Corona", rank: 5 },
 ];
 
-export const defaultAvatar = () => ({ color: "lima", face: "sonrisa", acc: "ninguno", nick: "", pins: [] });
+export const defaultAvatar = () => ({ color: "lima", acc: "ninguno", nick: "", pins: [] });
 
 export function avatarState() {
   const st = S.state;
   st.avatar = { ...defaultAvatar(), ...(st.avatar || {}) };
+  if (!ACCESSORIES.some((a) => a.id === st.avatar.acc)) st.avatar.acc = "ninguno";
   return st.avatar;
 }
 
@@ -40,35 +35,31 @@ export function maxRank() {
 }
 export const isUnlocked = (part) => S.isTeacher || maxRank() >= part.rank;
 
-export function avatarSVG(av = avatarState(), size = 120) {
+// Para dibujar el avatar dentro de una imagen (tarjeta de rango) la ilustración va incrustada.
+let headData = null;
+export async function ensureHeadData() {
+  if (headData) return headData;
+  const blob = await (await fetch("img/honti-cabeza.png")).blob();
+  headData = await new Promise((resolve) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.readAsDataURL(blob); });
+  return headData;
+}
+
+let uid = 0;
+export function avatarSVG(av = avatarState(), size = 120, opts = {}) {
   const c = pick(COLORS, av.color);
-  const ink = c.ink;
-  let eyes, mouth;
-  const dot = (cx, cy) => `<circle cx="${cx}" cy="${cy}" r="6" fill="${ink}"/><circle cx="${cx + 2}" cy="${cy - 3}" r="2" fill="${c.body}"/>`;
-  if (av.face === "feliz") {
-    eyes = `<path d="M38 66q8-10 16 0M66 66q8-10 16 0" fill="none" stroke="${ink}" stroke-width="5" stroke-linecap="round"/>`;
-    mouth = `<path d="M44 80q16 22 32 0z" fill="${ink}" stroke="${ink}" stroke-width="4" stroke-linejoin="round"/>`;
-  } else if (av.face === "guino") {
-    eyes = `${dot(46, 66)}<path d="M66 68q8-8 16 0" fill="none" stroke="${ink}" stroke-width="5" stroke-linecap="round"/>`;
-    mouth = `<path d="M46 82q14 14 28 0" fill="none" stroke="${ink}" stroke-width="5" stroke-linecap="round"/>`;
-  } else if (av.face === "calma") {
-    eyes = `${dot(46, 66)}${dot(74, 66)}`;
-    mouth = `<path d="M50 86h20" fill="none" stroke="${ink}" stroke-width="5" stroke-linecap="round"/>`;
-  } else {
-    eyes = `${dot(46, 66)}${dot(74, 66)}`;
-    mouth = `<path d="M46 82q14 14 28 0" fill="none" stroke="${ink}" stroke-width="5" stroke-linecap="round"/>`;
-  }
+  const id = "av" + ++uid;
+  const href = opts.inline && headData ? headData : "img/honti-cabeza.png";
   let acc = "";
-  if (av.acc === "gafas") acc = `<g fill="none" stroke="${ink}" stroke-width="4"><circle cx="46" cy="66" r="12"/><circle cx="74" cy="66" r="12"/><path d="M58 66h4"/></g>`;
-  else if (av.acc === "audifonos") acc = `<g fill="none" stroke="#CCEF3A" stroke-width="6" stroke-linecap="round"><path d="M16 62C14 10 106 10 104 62"/></g><rect x="6" y="56" width="16" height="28" rx="8" fill="#26588A" stroke="#CCEF3A" stroke-width="3"/><rect x="98" y="56" width="16" height="28" rx="8" fill="#26588A" stroke="#CCEF3A" stroke-width="3"/>`;
-  else if (av.acc === "gorra") acc = `<path d="M20 42C24 12 96 12 100 42z" fill="#26588A" stroke="#344151" stroke-width="3" stroke-linejoin="round"/><path d="M58 40h44q8 0 8 8H58z" fill="#CCEF3A" stroke="#344151" stroke-width="3" stroke-linejoin="round"/>`;
-  else if (av.acc === "corona") acc = `<path d="M34 24l8-16 12 12 6-14 6 14 12-12 8 16z" fill="#CCEF3A" stroke="#344151" stroke-width="3" stroke-linejoin="round"/>`;
+  if (av.acc === "gafas") acc = '<g fill="rgba(255,255,255,.18)" stroke="#344151" stroke-width="4"><circle cx="86" cy="114" r="14"/><circle cx="131" cy="110" r="14"/><path d="M100 113q8-5 17-3" fill="none"/></g>';
+  else if (av.acc === "audifonos") acc = '<path d="M42 96C38 14 160 6 156 84" fill="none" stroke="#CCEF3A" stroke-width="6" stroke-linecap="round"/><circle cx="42" cy="104" r="13" fill="#26588A" stroke="#CCEF3A" stroke-width="4"/><circle cx="156" cy="92" r="13" fill="#26588A" stroke="#CCEF3A" stroke-width="4"/>';
+  else if (av.acc === "bufanda") acc = '<path d="M46 168q54 26 110-2l-4 16q-52 24-104 2z" fill="#CCEF3A" stroke="#344151" stroke-width="3" stroke-linejoin="round"/><path d="M128 178l6 22 14-4-6-22z" fill="#CCEF3A" stroke="#344151" stroke-width="3" stroke-linejoin="round"/>';
+  else if (av.acc === "corona") acc = '<path d="M70 48L74 20l13 14 12-20 12 20 13-14 4 28z" fill="#CCEF3A" stroke="#344151" stroke-width="3" stroke-linejoin="round"/>';
   const edge = c.edge ? ` stroke="${c.edge}" stroke-width="3"` : "";
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="${size}" height="${size}" role="img" aria-label="Tu avatar">` +
-    `<path d="M60 8c28 0 50 20 50 50 0 32-20 54-50 54S10 92 10 58C10 28 32 8 60 8z" fill="${c.body}"${edge}/>` +
-    `<g fill="none" stroke="${c.arcs}" stroke-width="4.5" stroke-linecap="round"><path d="M36 36c6-8 14-12 24-12s18 4 24 12"/><path d="M28 48c8-14 18-20 32-20s24 6 32 20" opacity=".55"/></g>` +
-    `<circle cx="34" cy="82" r="7" fill="${c.arcs}" opacity=".18"/><circle cx="86" cy="82" r="7" fill="${c.arcs}" opacity=".18"/>` +
-    eyes + mouth + acc + `</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 200 200" width="${size}" height="${size}" role="img" aria-label="Tu avatar: Honti">` +
+    `<defs><clipPath id="${id}"><circle cx="100" cy="100" r="95"/></clipPath></defs>` +
+    `<circle cx="100" cy="100" r="96" fill="${c.body}"${edge}/>` +
+    `<g clip-path="url(#${id})"><image href="${href}" xlink:href="${href}" x="20" y="38" width="160" height="160"/></g>` +
+    acc + `</svg>`;
 }
 
 // ----------------------------- Medallas -----------------------------------------------------------------
@@ -112,7 +103,7 @@ export async function buildShareCard() {
   const nick = (av.nick || (S.user?.name || "").split(" ")[0] || "Programador").slice(0, 16);
   const medals = earnedMedals();
   const pins = (av.pins || []).map((id) => medals.find((m) => m.id === id)).filter(Boolean).slice(0, 3);
-  try { await Promise.all([document.fonts.load("800 56px Montserrat"), document.fonts.load("600 30px Montserrat")]); } catch {}
+  try { await Promise.all([document.fonts.load("800 56px Montserrat"), document.fonts.load("600 30px Montserrat"), ensureHeadData()]); } catch {}
 
   const c = document.createElement("canvas");
   c.width = 1080; c.height = 1080;
@@ -123,7 +114,7 @@ export async function buildShareCard() {
   ctx.beginPath(); ctx.moveTo(40, 1040); ctx.bezierCurveTo(200, 1000, 260, 1070, 420, 1040); ctx.bezierCurveTo(580, 1010, 640, 1070, 800, 1040); ctx.bezierCurveTo(900, 1020, 980, 1040, 1050, 1015); ctx.stroke();
   ctx.fillStyle = "#F4F4F4"; rr(ctx, 90, 60, 900, 880, 56); ctx.fill();
 
-  const [logo, avatarImg] = await Promise.all([loadImg("img/logo-ser-school.png"), loadImg(svgUrl(avatarSVG(av, 440)))]);
+  const [logo, avatarImg] = await Promise.all([loadImg("img/logo-ser-school.png"), loadImg(svgUrl(avatarSVG(av, 440, { inline: true })))]);
   const lw = 300, lh = lw * (logo.height / logo.width);
   ctx.drawImage(logo, 540 - lw / 2, 80, lw, lh);
   ctx.drawImage(avatarImg, 540 - 170, 80 + lh + 4, 340, 340);

@@ -8,7 +8,7 @@ import { TYPE_INFO, prepare, render, solutionText, editor } from "./exercises.js
 import { openExam } from "./exam.js";
 import { renderTeacher } from "./teacher.js";
 import { initA11y, listenButton, plainText, stopSpeaking } from "./a11y.js";
-import { buddy } from "./huellita.js";
+import { buddy } from "./honti.js";
 import { aiPanel } from "./ai.js";
 import { viewProfile } from "./profile.js";
 import { avatarSVG, avatarState } from "./avatar.js";
@@ -255,7 +255,7 @@ function viewHome() {
   const hello = buddy(
     !st.read["m" + cur.id] ? `¡Hola, ${first}! Empecemos leyendo la ficha de la Misión ${cur.id}. Es cortita.`
       : next ? `¡Hola, ${first}! Hoy toca el ejercicio ${pos} de ${total}. Tú puedes.`
-        : `¡Hola, ${first}! Elige un ejercicio y seguimos juntas.`, "hi");
+        : `¡Hola, ${first}! Elige un ejercicio y seguimos juntos.`, "hi", { body: true });
   const cta = st.pendingExam ? h("button", { class: "btn primary big", onclick: () => openExam() }, "Presentar mi examen")
     : !st.read["m" + cur.id] ? h("a", { class: "btn primary big", href: `#/m/${cur.id}` }, `Empezar la Misión ${cur.id}`)
       : next ? h("a", { class: "btn primary big", href: `#/ex/${next.id}` }, `Seguir: ejercicio ${pos} de ${total}`)
@@ -265,7 +265,7 @@ function viewHome() {
     h("section", { class: "hero2" },
       h("span", { class: "tagpill lime" }, "Python · Grado 9° · 5 semanas"),
       h("h1", {}, "Deja tu ", h("em", {}, "huella"), " en el código"),
-      h("p", { class: "lead" }, "Aprende a tu ritmo, con ejercicios cortos y una compañera que te anima. Al final de las 8 misiones construyes tu propio asistente con inteligencia artificial."),
+      h("p", { class: "lead" }, "Aprende a tu ritmo, con ejercicios cortos. Honti, el perro del colegio, te acompaña y te orienta. Al final de las 8 misiones construyes tu propio asistente con inteligencia artificial."),
       hello.el,
       h("div", { class: "hero-actions" }, cta),
       h("div", { class: "hero-stats2" },
