@@ -108,7 +108,7 @@ export async function renderTeacher(mount, parts = [], opts = {}) {
   mountFn = mount;
   lastParts = parts;
   if (!data || opts.reload) {
-    mount(h("p", { class: "center loading" }, "Cargando panel… 🧑‍🏫"));
+    mount(h("p", { class: "center loading" }, "Cargando panel…"));
     try { await load(); } catch (e) { mount(h("p", { class: "error" }, "No se pudo cargar el panel: " + e.message)); return; }
   }
   const view = parts[0] === "e" ? studentView(decodeURIComponent(parts[1] || "")) : tabView(parts[0] || "progreso");
@@ -131,7 +131,7 @@ function groupOptions() {
 
 function groupSelect() {
   const sel = h("select", { class: "select", "aria-label": "Grupo", onchange: (e) => { setGroup(e.target.value); rerender(); } },
-    h("option", { value: ALL }, "👥 Todos los grupos"),
+    h("option", { value: ALL }, "Todos los grupos"),
     groupOptions().map((g) => h("option", { value: g }, `Grupo ${g}`)),
     h("option", { value: NONE }, "Sin grupo"));
   sel.value = getGroup();
@@ -146,16 +146,16 @@ function header(active) {
   const tab = (id, label) => h("a", { href: `#/profe${id === "progreso" ? "" : "/" + id}`, class: id === active ? "active" : "" }, label);
   return [
     h("div", { class: "tp-head" },
-      h("h1", {}, "🧑‍🏫 Panel docente"),
+      h("h1", {}, "Panel docente"),
       h("div", { class: "row" },
         groupSelect(),
-        h("button", { class: "btn ghost", onclick: async (e) => { e.target.disabled = true; try { await load(); rerender(); toast("Panel actualizado", "win", 1500); } catch (err) { toast(err.message, "error"); } } }, "🔄 Actualizar"))),
+        h("button", { class: "btn ghost", onclick: async (e) => { e.target.disabled = true; try { await load(); rerender(); toast("Panel actualizado", "win", 1500); } catch (err) { toast(err.message, "error"); } } }, "Actualizar"))),
     api.isDemo() && h("p", { class: "banner" }, "Modo demo: aquí solo aparece lo que se hizo en este navegador."),
     h("div", { class: "tabs" },
-      tab("progreso", "📊 Progreso"),
-      tab("alertas", `🚨 Alertas y exámenes${helps ? ` (${helps} 🙋)` : ""}${blocked ? ` (${blocked} 🔒)` : ""}`),
-      tab("premios", `🎁 Premios${pending ? ` (${pending})` : ""}`),
-      tab("grupos", "👥 Grupos")),
+      tab("progreso", "Progreso"),
+      tab("alertas", `Alertas y exámenes${helps ? ` (${helps} ayudas)` : ""}${blocked ? ` (${blocked} bloqueos)` : ""}`),
+      tab("premios", `Premios${pending ? ` (${pending})` : ""}`),
+      tab("grupos", "Grupos")),
   ];
 }
 

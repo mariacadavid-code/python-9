@@ -3,33 +3,33 @@
 :root {
   --blue: #26588A;
   --slate: #344151;
-  --lime: #CCEF3A;
+  --lime: #C7EF39;
   --paper: #F4F4F4;
-  --lime-soft: #f1fad0;
+  --lime-soft: #eef9c4;
 
-  --bg: #FBFAF7;
+  --bg: #F5F5F5;
   --card: #ffffff;
-  --ink: #344151;
-  --muted: #667487;
-  --line: rgba(52, 65, 81, 0.12);
-  --brand: #26588A;
+  --ink: #36424F;
+  --muted: #5F6B77;
+  --line: #D9DEE3;
+  --brand: #26588C;
   --brand-ink: #ffffff;
   --brand-soft: #dfeaf6;
-  --accent: #CCEF3A;
+  --accent: #C7EF39;
   --ok: #1d7a4b;
   --ok-soft: #e1f2e8;
   --bad: #b0343d;
   --bad-soft: #fbe6e8;
   --warn-soft: #fbf6cf;
-  --btn: #344151;
+  --btn: #36424F;
   --btn-ink: #ffffff;
   --glow-a: rgba(38, 88, 138, 0.34);
   --glow-b: rgba(204, 239, 58, 0.55);
   --glow-c: rgba(143, 193, 255, 0.42);
-  --grad: linear-gradient(90deg, #26588A 0%, #3f9bb8 55%, #CCEF3A 100%);
-  --radius: 24px;
-  --radius-sm: 16px;
-  --shadow: 0 1px 2px rgba(52, 65, 81, 0.06), 0 14px 40px rgba(38, 88, 138, 0.08);
+  --grad: linear-gradient(135deg, #C7EF39, #A9D02E);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --shadow: 0 4px 20px -4px rgba(54, 66, 79, 0.08);
   --code-bg: #1d2835;
   --code-ink: #e8eef5;
   --tk-kw: #cfee45; --tk-bi: #8ec3ff; --tk-str: #ffd479; --tk-num: #ffb27a; --tk-com: #8a99ab;
@@ -251,3 +251,37 @@ a.mission:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(38, 
 .buddy .mascot.is-body { width: 120px; height: 170px; }
 .buddy .mascot .mood-badge { position: absolute; top: -4px; right: -6px; font-size: 1.1rem; line-height: 1; background: var(--card); border: 1px solid var(--line); border-radius: 50%; width: 28px; height: 28px; display: grid; place-items: center; box-shadow: var(--shadow); }
 .avatar-chip svg { width: 40px; height: 40px; }
+
+/* ---------- Estilo plano, como el Python Camp de Lovable ---------- */
+body::before { display: none; }
+#topbar { background: #fff; border-radius: 14px; }
+.hero2 { background: none; }
+.hero2 h1 em { background: var(--lime); font-style: normal; font-family: var(--f-head); font-weight: 800; padding: 0 0.18em; border-radius: 10px; }
+.goal.now { background: var(--lime-soft); }
+.pf-avatar { background: var(--lime-soft); }
+.progress i, .xpbar i { background: var(--lime); }
+
+/* Panel docente: sobrio, de herramienta de trabajo */
+.teacher > .tp-head { background: #2D3741; color: #fff; border-radius: var(--radius); padding: 16px 20px; margin-bottom: 14px; }
+.teacher > .tp-head h1 { color: #fff; font-size: 1.5rem; margin: 0; }
+.teacher > .tp-head .select { background: #36424F; color: #fff; border-color: #4a5866; border-radius: 10px; }
+.teacher > .tp-head .btn { border-radius: 10px; }
+.teacher .tabs { border-bottom: 2px solid var(--line); gap: 4px; margin-bottom: 14px; }
+.teacher .tabs a { border-radius: 10px 10px 0 0; padding: 9px 16px; font-weight: 700; color: var(--muted); text-decoration: none; background: transparent; border: 0; }
+.teacher .tabs a.active { background: var(--lime); color: #2D3741; }
+.teacher .tp-card { text-align: left; border-radius: 12px; border: 1px solid var(--line); border-left: 5px solid var(--lime); padding: 12px 16px; box-shadow: none; }
+.teacher .tp-n { color: var(--brand); font-size: 1.6rem; }
+.teacher .tp-table { border-collapse: separate; border-spacing: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.teacher .tp-table thead th { background: #2D3741; color: #fff; font-size: 0.8rem; letter-spacing: 0.04em; text-transform: uppercase; padding: 10px 12px; }
+.teacher .tp-table td { padding: 9px 12px; border-bottom: 1px solid var(--line); }
+.teacher .tp-table tbody tr:nth-child(even) td { background: #fafafa; }
+.teacher .tp-table tbody tr:hover td { background: var(--lime-soft); }
+.teacher .tp-table td.pc { border-radius: 0; }
+.teacher .card { box-shadow: none; border-radius: 12px; }
+.teacher .crumbs { font-weight: 700; color: var(--brand); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .teacher .tp-table tbody tr:nth-child(even) td { background: #1f2a36; } }
+:root[data-theme="dark"] .teacher .tp-table tbody tr:nth-child(even) td { background: #1f2a36; }
+.teacher > .tp-head .btn { background: var(--lime); color: #2D3741; border: 0; font-weight: 800; }
+.teacher > .tp-head .btn:disabled { opacity: 0.6; }
+.teacher .progress { background: #e4e8ec; border-radius: 99px; }
+img[src*="logo-ser-school"] { mix-blend-mode: multiply; }
