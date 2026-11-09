@@ -2,9 +2,9 @@
 // Las que no tienen contenido aparecen como "Próximamente".
 import m1 from "./m1.js";
 import m2 from "./m2.js";
+import m3 from "./m3.js";
 
 const UPCOMING = [
-  [3, "🔤", "Texto", "comillas, índices, slicing y métodos"],
   [4, "⌨️", "Hablar con el usuario", "input(), conversión y f-strings"],
   [5, "🔀", "Decisiones", "booleanos, comparar, if / elif / else"],
   [6, "📋", "Listas", "guardar muchos datos en orden"],
@@ -19,5 +19,6 @@ const UPCOMING = [
 export const MISSIONS = [
   m1,
   m2,
+  m3,
   ...UPCOMING.map(([id, emoji, title, subtitle]) => ({ id, emoji, title, subtitle, soon: true, dossier: [], levels: [] })),
 ];
